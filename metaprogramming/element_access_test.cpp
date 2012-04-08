@@ -1,6 +1,5 @@
 #include <type_traits>
 
-#include <boost/mpl/pair.hpp>
 #include <typeinfo>
 
 #include "element_access.h"
@@ -8,7 +7,6 @@
 using namespace robot::metaprogramming_tools;
 
 using p0 = convert_to_pair<int>;
-using p1 = convert_to_pair<boost::mpl::pair<int, char>>;
 
 using t0 = at_c<0, int, char, long long>;
 using t1 = at_c<1, int, char, long long>;
@@ -40,9 +38,6 @@ struct test_pair
 {
     static_assert(std::is_same<p0::first , unspecified>::value, "pair err0");
     static_assert(std::is_same<p0::second, int        >::value, "pair err0");
-
-    static_assert(std::is_same<p1::first , int >::value, "pair err1");
-    static_assert(std::is_same<p1::second, char>::value, "pair err1");
 };
 
 struct test_access_by_index
