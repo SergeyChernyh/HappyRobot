@@ -1,11 +1,12 @@
 #ifndef __METAPROGRAMMING_PAIR__
 #define __METAPROGRAMMING_PAIR__
 
-#include "unspecified.h"
-#include "sequence.h"
-
 namespace robot { namespace metaprogramming_tools
 {
+    struct unspecified {};
+
+    template <typename ...Args> struct sequence {};
+
     template <typename First, typename Second>
     struct pair
     {
