@@ -33,6 +33,16 @@ struct test
     >::value, "err0");
 };
 
+using namespace robot::metaprogramming_tools;
+
+using s0 = sequence<long, char, int, int*>;
+using s1 = sequence<char*, sequence<int>>;
+
+struct test_concatination
+{
+    static_assert(std::is_same<concatinate<s0, s1>, sequence<long, char, int, int*, char*, sequence<int>>>::value, "concatinate err0");
+};
+
 int main(int argc, const char* argv[])
 {
     return 0;
