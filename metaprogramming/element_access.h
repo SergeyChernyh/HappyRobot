@@ -4,9 +4,7 @@
 #include <cstring>
 #include <stdint.h>
 
-#include "pair.h"
-#include "concatination.h"
-#include "size.h"
+#include "data_types.h"
 
 namespace robot { namespace metaprogramming_tools
 {
