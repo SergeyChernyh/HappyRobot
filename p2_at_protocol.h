@@ -4,8 +4,6 @@
 #include <vector>
 
 #include "package.h"
-#include "metaprogramming/pair.h"
-#include "metaprogramming/size.h"
 
 namespace robot { namespace p2_at
 {
