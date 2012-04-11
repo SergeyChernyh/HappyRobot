@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <tuple>
 
+#include "type_traits.h"
 #include "element_access.h"
 
 namespace robot { namespace metaprogramming_tools
