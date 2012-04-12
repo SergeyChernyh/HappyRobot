@@ -26,8 +26,6 @@ namespace robot { namespace metaprogramming_tools
         using second = Second;
 
         second value;
-
-        pair(const second& v): value(v) {}
     };
 
     namespace to_pair

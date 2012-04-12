@@ -1,33 +1,17 @@
-#ifndef __METAPROGRAMMING_DATA_TYPES__
-#define __METAPROGRAMMING_DATA_TYPES__
+#ifndef __METAPROGRAMMING_PAIR__
+#define __METAPROGRAMMING_PAIR__
 
 namespace robot { namespace metaprogramming_tools
-{
-    ///////////////////////////////////////////////////////
-    //
-    //                Sequense & unspecified
-    //
-    ///////////////////////////////////////////////////////
 
     struct unspecified {};
 
     template <typename ...Args> struct sequence {};
-
-    ///////////////////////////////////////////////////////
-    //
-    //                        Pair
-    //
-    ///////////////////////////////////////////////////////
 
     template <typename First, typename Second>
     struct pair
     {
         using first  = First;
         using second = Second;
-
-        second value;
-
-        pair(const second& v): value(v) {}
     };
 
     namespace to_pair
@@ -57,4 +41,4 @@ namespace robot { namespace metaprogramming_tools
     using convert_to_pair = typename to_pair::convert_to_pair<Args...>::type;
 }}
 
-#endif //__METAPROGRAMMING_DATA_TYPES__
+#endif //__METAPROGRAMMING_PAIR__

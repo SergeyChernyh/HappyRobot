@@ -181,9 +181,6 @@ namespace robot { namespace metaprogramming_tools
         template <typename ...Args>
         struct serialize<sequence<Args...>>: public serialize<Args...> {};
 
-        template <typename T0, typename T1>
-        struct serialize<pair<T0, T1>>: public serialize<T1> {};
-
         template <>
         struct serialize<sequence<>> { using type = sequence<>; };
 

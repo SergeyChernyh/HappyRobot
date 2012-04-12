@@ -108,7 +108,7 @@ namespace robot { namespace metaprogramming_tools
             public is_const_size<Args...> {};
 
         template <typename T0, typename T1>
-        struct is_const_size<pair<T0, T1>>: public is_const_size<T1> {};
+        struct is_const<pair<T0, T1>>: public is_const<T1> {};
     }
     
     template <typename... Args>
