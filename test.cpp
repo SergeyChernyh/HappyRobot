@@ -14,8 +14,9 @@ void send_cmd(Interface& i)
     using namespace p2_at;
 
     using msg = message<command<n>>;
-    auto m = package<msg>::data;
-    i.write((const char*)(m), package_creation::size<msg>::value);
+    auto m = make_package<msg>();
+    i.write((const char*)(m.data), package_creation::size<msg>::value);
+    // or i.write((const char*)(package<msg>::data), package_creation::size<msg>::value);
 }
 
 template <uint8_t n, int16_t p, typename Interface>
@@ -24,9 +25,10 @@ void send_cmd(Interface& i)
     using namespace p2_at;
 
     using msg = message<command<n, constant<int16_t, p>>>;
-    auto m = package<msg>::data;
+    auto m = make_package<msg>();
 
-    i.write((const char*)(m), package_creation::size<msg>::value);
+    i.write((const char*)(m.data), package_creation::size<msg>::value);
+    // or i.write((const char*)(package<msg>::data), package_creation::size<msg>::value);
 }
 
 template <uint8_t n, typename Interface>
@@ -72,14 +74,14 @@ int main(int argc, const char* argv[])
     send_cmd<1>(tcp);
 
     send_cmd<4 , 1>(tcp);
+
     send_cmd<11, 1200>(tcp);
     //send_cmd<11>(1200, tcp);
-
     //send_vec_cmd<11>(1200, tcp);
 
     while(true) {
         send_cmd<0>(tcp);
-        Sleep(1);
+        Sleep(1000);
     }
 
     return 0;
