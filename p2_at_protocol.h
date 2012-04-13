@@ -84,14 +84,19 @@ namespace robot { namespace p2_at
 
     /////// Message Format ////////////////////////////////
 
+    struct head_key{};
+    struct byte_count_key{};
+    struct message_body_key{};
+    struct chck_sum_key{};
+
     template <typename T>
     using message =
     sequence
     <
-        head_t,
-        byte_count_t<T>,
-        T,
-        chck_sum_t<T>
+        pair<head_key        , head_t>,
+        pair<byte_count_key  , byte_count_t<T>>,
+        pair<message_body_key, T>,
+        pair<chck_sum_key    , chck_sum_t<T>>
     >;
 
     //////////// Client Cmd ///////////////////////////////

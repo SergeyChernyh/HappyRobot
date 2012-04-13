@@ -72,6 +72,9 @@ namespace robot { namespace package_creation
             }
         };
 
+        template <typename T0, typename T1>
+        struct serializer<false, pair<T0, T1>>: public serializer<std::is_fundamental<T1>::value, T1> {};
+
         template <typename T>
         void serialize(const T& t, uint8_t *pos)
         {
@@ -154,14 +157,14 @@ namespace robot { namespace package_creation
                 at_key
                 <
                     is_const<T>,
-                    sequence
-                    <
-                        pair<std::integral_constant<bool, false>, sequence<T>>,
-                        pair<std::integral_constant<bool, true >, sequence<>>
-                    >
+                    pair<std::integral_constant<bool, false>, sequence<T>>,
+                    pair<std::integral_constant<bool, true >, sequence<>>
                 >
             >;
         };
+
+        template <typename CurrentList, typename T0, typename T1>
+        struct add_non_const_arg<CurrentList, pair<T0, T1>>: public add_non_const_arg<CurrentList, T1> {};
 
         template <typename CurrentList, typename T, typename ...Args>
         struct add_non_const_arg<CurrentList, T, Args...>:
@@ -243,6 +246,10 @@ namespace robot { namespace package_creation
                 return inserter<0>::size(args...) + serialization::calc_size(U);
             }
         };
+
+        template <typename ...Args, typename ...FArgs, typename T0, typename T1, typename P, size_t C>
+        struct insert_param<sequence<pair<T0, T1>, Args...>, sequence<FArgs...>, P, C>:
+            public insert_param<sequence<T1, Args...>, sequence<FArgs...>, P, C> {};
 
         template <typename ...Args, typename ...FArgs, typename ...SubSequenceArgs, typename P, size_t C>
         struct insert_param<sequence<sequence<SubSequenceArgs...>, Args...>, sequence<FArgs...>, P, C>

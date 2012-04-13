@@ -83,8 +83,8 @@ namespace robot { namespace metaprogramming_tools
             >
         {};
 
-        template <typename T0, typename T1>
-        struct size_c<pair<T0, T1>>: public size_c<T1> {};
+        template <typename Size, typename T0, typename T1>
+        struct size_c<Size, pair<T0, T1>>: public size_c<Size, T1> {};
 
         template <typename Size, typename... Args>
         struct size_c<Size, sequence<Args...>>: public size_c<Size, Args...> {};
