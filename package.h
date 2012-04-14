@@ -190,27 +190,6 @@ namespace robot { namespace package_creation
         template <typename ...Args>
         using non_const_args = typename add_non_const_arg<sequence<>, Args...>::type;
 
-        template <typename ...Args>
-        using package = package_creation::package<sequence<Args...>>;
-
-        template <typename T0, typename T1, bool const_data, bool const_size>
-        struct package_creation_function_util_base;
-
-        template <typename ...Args, typename ...FArgs>
-        struct package_creation_function_util_base
-        <
-            sequence<Args...>,
-            sequence<FArgs...>,
-            true,
-            true
-        >
-        {
-            static package<Args...> make_package(const FArgs&... args)
-            {
-                return package<Args...>();
-            }
-        };
-
         template <typename T0, typename T1, typename P, size_t insert_index>
         struct insert_param;
 
@@ -247,38 +226,6 @@ namespace robot { namespace package_creation
             }
         };
 
-        template <typename ...Args, typename ...FArgs, typename T0, typename T1, typename P, size_t C>
-        struct insert_param<sequence<pair<T0, T1>, Args...>, sequence<FArgs...>, P, C>:
-            public insert_param<sequence<T1, Args...>, sequence<FArgs...>, P, C> {};
-
-        template <typename ...Args, typename ...FArgs, typename ...SubSequenceArgs, typename P, size_t C>
-        struct insert_param<sequence<sequence<SubSequenceArgs...>, Args...>, sequence<FArgs...>, P, C>
-        {
-            using inserter =
-            insert_param
-            <
-                concatinate<sequence<SubSequenceArgs...>, sequence<Args...>>,
-                sequence<FArgs...>,
-                P,
-                C
-            >;
-
-            static void insert(P& pack, const FArgs&... args)
-            {
-                inserter::insert(pack, args...);
-            }
-
-            static void insert(size_t disp, P& pack, const FArgs&... args)
-            {
-                inserter::insert(disp, pack, args...);
-            }
-            
-            static size_t size(const FArgs&... args)
-            {
-                return inserter::size(args...);
-            }
-        };  
-
         template <typename ...Args, typename ...FArgs, typename F, typename P, size_t C>
         struct insert_param<sequence<F, Args...>, sequence<F, FArgs...>, P, C>
         {
@@ -301,16 +248,35 @@ namespace robot { namespace package_creation
             {
                 return inserter<0>::size(args...) + serialization::calc_size(f);
             }
-        };   
+        }; 
 
-        template <typename ...Args, typename ...FArgs>
-        struct package_creation_function_util_base
-        <
-            sequence<Args...>,
-            sequence<FArgs...>,
-            false,
-            true
-        >
+        template <typename ...Args, typename ...FArgs, typename T0, typename T1, typename P, size_t C>
+        struct insert_param<sequence<pair<T0, T1>, Args...>, sequence<FArgs...>, P, C>:
+            public insert_param<sequence<T1, Args...>, sequence<FArgs...>, P, C> {};
+
+        template <typename ...Args, typename ...FArgs, typename ...SubSequenceArgs, typename P, size_t C>
+        struct insert_param<sequence<sequence<SubSequenceArgs...>, Args...>, sequence<FArgs...>, P, C>:
+            public insert_param<sequence<SubSequenceArgs..., Args...>, sequence<FArgs...>, P, C> {};
+
+        template <typename ...Args>
+        using package = package_creation::package<sequence<Args...>>;
+
+        template <typename T0, typename T1, bool const_data, bool const_size>
+        struct package_creation_function_util_base;
+
+#define __PACKAGE_CTREATION_PATTERN__(A, B)\
+        template <typename ...Args, typename ...FArgs>\
+        struct package_creation_function_util_base<sequence<Args...>, sequence<FArgs...>, A, B>
+
+        __PACKAGE_CTREATION_PATTERN__(true, true)
+        {
+            static package<Args...> make_package(const FArgs&... args)
+            {
+                return package<Args...>();
+            }
+        };
+
+        __PACKAGE_CTREATION_PATTERN__(false, true)
         {
             static package<Args...> make_package(const FArgs&... args)
             {
@@ -321,14 +287,7 @@ namespace robot { namespace package_creation
             }
         };
 
-        template <typename ...Args, typename ...FArgs>
-        struct package_creation_function_util_base
-        <
-            sequence<Args...>,
-            sequence<FArgs...>,
-            false,
-            false
-        >
+        __PACKAGE_CTREATION_PATTERN__(false, false)
         {
             static package<Args...> make_package(const FArgs&... args)
             {
@@ -340,6 +299,8 @@ namespace robot { namespace package_creation
                 return p;
             }
         };
+
+#undef __PACKAGE_CTREATION_PATTERN__
 
         template <typename ...Args>
         struct package_creation_function_util: public
