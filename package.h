@@ -214,8 +214,8 @@ namespace robot { namespace package_creation
         template <typename T0, typename T1, typename P, size_t insert_index>
         struct insert_param;
 
-        template <typename ...Args, typename P, size_t C>
-        struct insert_param<sequence<Args...>, sequence<>, P, C>
+        template <typename P, size_t C>
+        struct insert_param<sequence<>, sequence<>, P, C>
         {
             static void insert(P&){}
             static void insert(size_t, P&){}
