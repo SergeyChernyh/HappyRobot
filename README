@@ -1,0 +1,3 @@
+Компиллятор - gcc 4.7
+
+Сборка: g++ -Wall -Werror -std=gnu++11 test.cpp -lws2_32
