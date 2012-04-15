@@ -4,6 +4,7 @@
 #include <numeric>
 
 #include "metaprogramming/serialization.h"
+#include "metaprogramming/select.h"
 
 namespace robot { namespace package_creation
 {
@@ -218,51 +219,6 @@ namespace robot { namespace package_creation
     {
         using namespace metaprogramming_tools;
 
-        template <typename ...Args> struct add_non_const_arg;
-
-        template <typename CurrentList, typename T>
-        struct add_non_const_arg<CurrentList, T>
-        {
-            using type =
-            concatinate
-            <
-                CurrentList,
-                at_key
-                <
-                    is_const<T>,
-                    pair<std::integral_constant<bool, false>, sequence<T>>,
-                    pair<std::integral_constant<bool, true >, sequence<>>
-                >
-            >;
-        };
-
-        template <typename CurrentList, typename T0, typename T1>
-        struct add_non_const_arg<CurrentList, pair<T0, T1>>: public add_non_const_arg<CurrentList, T1> {};
-
-        template <typename CurrentList, typename T, typename ...Args>
-        struct add_non_const_arg<CurrentList, T, Args...>:
-            public add_non_const_arg<typename add_non_const_arg<CurrentList, T>::type, Args...>
-        {};
-
-        template <typename CurrentList>
-        struct add_non_const_arg<CurrentList>
-        {
-            using type = CurrentList;
-        };
-        
-        template <typename CurrentList, typename ...Args>
-        struct add_non_const_arg<CurrentList, sequence<Args...>>:
-            public add_non_const_arg<CurrentList, Args...>
-        {};
-
-        template <typename CurrentList, typename ...SubSequenceArgs, typename ...Args>
-        struct add_non_const_arg<CurrentList, sequence<SubSequenceArgs...>, Args...>:
-            public add_non_const_arg<CurrentList, concatinate<sequence<SubSequenceArgs...>, sequence<Args...>>>
-        {};
-
-        template <typename ...Args>
-        using non_const_args = typename add_non_const_arg<sequence<>, Args...>::type;
-
         template <typename ...Args>
         using package = package_creation::package<sequence<Args...>>;
 
@@ -312,7 +268,7 @@ namespace robot { namespace package_creation
             package_creation_function_util_base
             <
                 sequence<Args...>,
-                non_const_args<Args...>,
+                select<is_no_const, Args...>,
                 is_const<Args...>::value,
                 is_const_size<Args...>::value
             >
