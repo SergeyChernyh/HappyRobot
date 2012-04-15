@@ -16,7 +16,6 @@ void send_cmd(Interface& i)
     using msg = message<command<n>>;
     auto m = package<msg>();
     i.write((const char*)(m.get_data()), package_creation::size<msg>::value);
-    // or i.write((const char*)(package<msg>::data), package_creation::size<msg>::value);
 }
 
 template <uint8_t n, int16_t p, typename Interface>
@@ -28,7 +27,6 @@ void send_cmd(Interface& i)
     auto m = package<msg>();
 
     i.write((const char*)(m.get_data()), package_creation::size<msg>::value);
-    // or i.write((const char*)(package<msg>::data), package_creation::size<msg>::value);
 }
 
 template <uint8_t n, typename Interface>
