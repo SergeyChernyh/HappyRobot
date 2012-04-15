@@ -14,7 +14,7 @@ void send_cmd(Interface& i)
     using namespace p2_at;
 
     using msg = message<command<n>>;
-    auto m = make_package<msg>();
+    auto m = package<msg>();
     i.write((const char*)(m.data), package_creation::size<msg>::value);
     // or i.write((const char*)(package<msg>::data), package_creation::size<msg>::value);
 }
@@ -25,7 +25,7 @@ void send_cmd(Interface& i)
     using namespace p2_at;
 
     using msg = message<command<n, constant<int16_t, p>>>;
-    auto m = make_package<msg>();
+    auto m = package<msg>();
 
     i.write((const char*)(m.data), package_creation::size<msg>::value);
     // or i.write((const char*)(package<msg>::data), package_creation::size<msg>::value);
@@ -39,7 +39,7 @@ void send_cmd(int16_t p, Interface& i)
     using cmd = command<n, int16_t>;
     using msg = message<cmd>;
 
-    auto m = make_package<msg>(p, chck_sum_calc<cmd>(make_package<cmd>(p)));
+    auto m = package<msg>(p, chck_sum_calc<cmd>(package<cmd>(p)));
 
     i.write((const char*)(m.data), package_creation::size<msg>::value);
 }
@@ -54,9 +54,9 @@ void send_vec_cmd(int16_t p, Interface& i)
 
     std::vector<int16_t> vec(1, p);
 
-    auto cmd_ = make_package<cmd>(vec);
+    auto cmd_ = package<cmd>(vec);
 
-    auto m = make_package<msg>(cmd_.data_size() + package_creation::size<chck_sum_t<cmd>>::value, vec, chck_sum_calc<cmd>(cmd_));
+    auto m = package<msg>(cmd_.data_size() + package_creation::size<chck_sum_t<cmd>>::value, vec, chck_sum_calc<cmd>(cmd_));
 
     i.write((const char*)(m.data), m.data_size()); //TODO
 }
@@ -75,9 +75,9 @@ int main(int argc, const char* argv[])
 
     send_cmd<4 , 1>(tcp);
 
-    send_cmd<11, 1200>(tcp);
+    //send_cmd<11, 1200>(tcp);
     //send_cmd<11>(1200, tcp);
-    //send_vec_cmd<11>(1200, tcp);
+    send_vec_cmd<11>(1200, tcp);
 
     while(true) {
         send_cmd<0>(tcp);

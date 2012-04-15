@@ -7,30 +7,10 @@
 
 #include "type_traits.h"
 #include "element_access.h"
+#include "concatination.h"
 
 namespace robot { namespace metaprogramming_tools
 {
-    ///////////////////////////////////////////////////////
-    //
-    //                   Concatination
-    //
-    ///////////////////////////////////////////////////////
-
-    namespace concatination
-    {
-        template <typename ...Args>
-        struct _cat;
-
-        template <typename ...Args0, typename ...Args1>
-        struct _cat<sequence<Args0...>, sequence<Args1...>>
-        {
-            using type = sequence<Args0..., Args1...>;
-        };
-    }
-
-    template <typename S0, typename S1>
-    using concatinate = typename concatination::_cat<S0, S1>::type;
-
     ///////////////////////////////////////////////////////
     //
     //                  Bytes Count

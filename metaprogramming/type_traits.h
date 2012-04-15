@@ -67,6 +67,9 @@ namespace robot { namespace metaprogramming_tools
     template <typename... Args>
     using is_const = std::integral_constant<bool, const_check::is_const<Args...>::value>;
 
+    template <typename... Args>
+    using is_no_const = std::integral_constant<bool, !const_check::is_const<Args...>::value>;
+
     ///////////////////////////////////////////////////////
     //
     //         Specific type traits: is_const_size
@@ -118,7 +121,14 @@ namespace robot { namespace metaprogramming_tools
             bool,
             const_size_check::is_const_size<Args...>::value
         >;
+    
+    template <typename... Args>
+    using is_no_const_size =
+        std::integral_constant
+        <
+            bool,
+            !const_size_check::is_const_size<Args...>::value
+        >;
 }}
 
 #endif //__METAPROGRAMMING_TYPE_TRAITS__
-

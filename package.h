@@ -158,6 +158,8 @@ namespace robot { namespace package_creation
 
     namespace package_buffer
     {
+        namespace m = metaprogramming_tools;
+
         template <typename... Args>
         struct compile_time_size_calc_util
         {   
@@ -171,38 +173,48 @@ namespace robot { namespace package_creation
         };
 
         template <typename ...Args>
-        struct const_buffer<metaprogramming_tools::sequence<Args...>>: public const_buffer<Args...> {};
+        struct const_buffer<m::sequence<Args...>>: public const_buffer<Args...> {};
 
         template <typename ...Args>
         const uint8_t const_buffer<Args...>::data[] = { Args::value... };
 
-        template <bool is_const_size, bool is_const_data, typename ...Args>
+        template <bool is_const_size, typename NonConstArgs, typename ...Args>
         struct buffer;
 
-        template <typename... Args>
-        struct buffer<false, false, Args...>
+        template <typename... Args, typename ...NonConstArgs>
+        struct buffer<false, m::sequence<NonConstArgs...>, Args...>
         {
+            using inserter = serialization::insert_param<m::sequence<Args...>, m::sequence<NonConstArgs...>>;
+
             const size_t d_size;
             uint8_t *data;
 
-            buffer(size_t size):
-                d_size(size),
-                data(new uint8_t[size])
-            {}
+            buffer(const NonConstArgs&... args):
+                d_size(inserter::size(args...)),
+                data(new uint8_t[d_size])
+            {
+                inserter::insert(data, args...);
+            }
 
             ~buffer() { delete []data; }
 
             size_t data_size() const { return d_size; }
         };
 
-        template <typename... Args>
-        struct buffer<true , false, Args...>: public compile_time_size_calc_util<Args...>
+        template <typename... Args, typename ...NonConstArgs>
+        struct buffer<true, m::sequence<NonConstArgs...>, Args...>: public compile_time_size_calc_util<Args...>
         {
-            uint8_t data[size<Args...>::value]; 
+            using inserter = serialization::insert_param<m::sequence<Args...>, m::sequence<NonConstArgs...>>;
+            uint8_t data[size<Args...>::value];
+
+            buffer(const NonConstArgs&... args)
+            {
+                inserter::insert(data, args...);
+            }
         };
 
         template <typename... Args>
-        struct buffer<true , true , Args...>: public const_buffer<metaprogramming_tools::serialize<Args...>>
+        struct buffer<true, m::sequence<>, Args...>: public const_buffer<m::serialize<Args...>>
         {};
     }
 
@@ -211,80 +223,9 @@ namespace robot { namespace package_creation
     package_buffer::buffer
     <
         metaprogramming_tools::is_const_size<Args...>::value,
-        metaprogramming_tools::is_const<Args...>::value,
+        metaprogramming_tools::select<metaprogramming_tools::is_no_const, Args...>,
         Args...
     >;
-
-    namespace package_creation_function
-    {
-        using namespace metaprogramming_tools;
-
-        template <typename ...Args>
-        using package = package_creation::package<sequence<Args...>>;
-
-        template <typename T0, typename T1, bool const_data, bool const_size>
-        struct package_creation_function_util_base;
-
-#define __PACKAGE_CTREATION_PATTERN__(A, B)\
-        template <typename ...Args, typename ...FArgs>\
-        struct package_creation_function_util_base<sequence<Args...>, sequence<FArgs...>, A, B>
-
-        __PACKAGE_CTREATION_PATTERN__(true, true)
-        {
-            static package<Args...> make_package(const FArgs&... args)
-            {
-                return package<Args...>();
-            }
-        };
-
-        __PACKAGE_CTREATION_PATTERN__(false, true)
-        {
-            static package<Args...> make_package(const FArgs&... args)
-            {
-                using pack = package<Args...>;
-                pack p;
-                serialization::insert_param<sequence<Args...>, sequence<FArgs...>>::insert(p.data, args...);
-                return p;
-            }
-        };
-
-        __PACKAGE_CTREATION_PATTERN__(false, false)
-        {
-            static package<Args...> make_package(const FArgs&... args)
-            {
-                using pack = package<Args...>;
-                using inserter = serialization::insert_param<sequence<Args...>, sequence<FArgs...>>;
-
-                pack p(inserter::size(args...));
-                inserter::insert(p.data, args...);
-                return p;
-            }
-        };
-
-#undef __PACKAGE_CTREATION_PATTERN__
-
-        template <typename ...Args>
-        struct package_creation_function_util: public
-            package_creation_function_util_base
-            <
-                sequence<Args...>,
-                select<is_no_const, Args...>,
-                is_const<Args...>::value,
-                is_const_size<Args...>::value
-            >
-        {};
-
-        template <typename ...Args>
-        struct package_creation_function_util<sequence<Args...>>: public
-            package_creation_function_util<Args...>
-        {};
-    }
-
-    template <typename T, typename ...Args>
-    inline package<T> make_package(const Args&... args)
-    {
-        return package_creation_function::package_creation_function_util<T>::make_package(args...);
-    }
 }}
 
 #endif //__SERIALIZATION__
