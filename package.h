@@ -15,6 +15,12 @@ namespace robot { namespace package_creation
     {
         using namespace metaprogramming_tools;
 
+        ///////////////////////////////////////////////////
+        //
+        //              Size calculation
+        //
+        ///////////////////////////////////////////////////
+
         template <bool is_const_size, typename T>
         struct size_calc_tmp;
 
@@ -48,6 +54,12 @@ namespace robot { namespace package_creation
         template <typename T>
         constexpr size_t calc_size(const T& t) { return size_calc_tmp<is_const_size<T>::value, T>::size(t); }
 
+        ///////////////////////////////////////////////////
+        //
+        // Fundamental types and containers serialization
+        //
+        ///////////////////////////////////////////////////
+
         template <bool is_fundamental, typename T>
         struct serializer;
 
@@ -80,6 +92,67 @@ namespace robot { namespace package_creation
         {
             serializer<std::is_fundamental<T>::value, T>::serialize(t, pos);
         }
+
+        ///////////////////////////////////////////////////
+        //
+        //            Sequences serialization
+        //
+        ///////////////////////////////////////////////////
+
+        // T0 - sequence<all_types...>
+        // T1 - sequence<only_non_const_types...>
+
+        template <typename T0, typename T1>
+        struct insert_param;
+
+        template <>
+        struct insert_param<sequence<>, sequence<>>
+        {
+            static void insert(uint8_t*){}
+            static size_t size() { return 0; }
+        };
+
+        template <typename ...Args, typename ...FArgs, typename F, F U>
+        struct insert_param<sequence<std::integral_constant<F, U>, Args...>, sequence<FArgs...>>
+        {
+            using inserter = insert_param<sequence<Args...>, sequence<FArgs...>>;
+
+            static void insert(uint8_t *dst, const FArgs&... args)
+            {
+                serialize(U, dst);
+                inserter::insert(dst + calc_size(U), args...);
+            }
+
+            static size_t size(const FArgs&... args)
+            {
+                return inserter::size(args...) + calc_size(U);
+            }
+        };
+
+        template <typename ...Args, typename ...FArgs, typename F>
+        struct insert_param<sequence<F, Args...>, sequence<F, FArgs...>>
+        {
+            using inserter = insert_param<sequence<Args...>, sequence<FArgs...>>;
+
+            static void insert(uint8_t *dst, const F& f, const FArgs&... args)
+            {
+                serialize(f, dst);
+                inserter::insert(dst + calc_size(f), args...);
+            }
+
+            static size_t size(const F& f, const FArgs&... args)
+            {
+                return inserter::size(args...) + calc_size(f);
+            }
+        };
+
+        template <typename ...Args, typename ...FArgs, typename T0, typename T1>
+        struct insert_param<sequence<pair<T0, T1>, Args...>, sequence<FArgs...>>:
+            public insert_param<sequence<T1, Args...>, sequence<FArgs...>> {};
+
+        template <typename ...Args, typename ...FArgs, typename ...SubSequenceArgs>
+        struct insert_param<sequence<sequence<SubSequenceArgs...>, Args...>, sequence<FArgs...>>:
+            public insert_param<sequence<SubSequenceArgs..., Args...>, sequence<FArgs...>> {};
     }
 
     namespace package_buffer
@@ -190,58 +263,6 @@ namespace robot { namespace package_creation
         template <typename ...Args>
         using non_const_args = typename add_non_const_arg<sequence<>, Args...>::type;
 
-        template <typename T0, typename T1>
-        struct insert_param;
-
-        template <>
-        struct insert_param<sequence<>, sequence<>>
-        {
-            static void insert(uint8_t*){}
-            static size_t size() { return 0; }
-        };
-
-        template <typename ...Args, typename ...FArgs, typename F, F U>
-        struct insert_param<sequence<std::integral_constant<F, U>, Args...>, sequence<FArgs...>>
-        {
-            using inserter = insert_param<sequence<Args...>, sequence<FArgs...>>;
-
-            static void insert(uint8_t *dst, const FArgs&... args)
-            {
-                serialization::serialize(U, dst);
-                inserter::insert(dst + serialization::calc_size(U), args...);
-            }
-
-            static size_t size(const FArgs&... args)
-            {
-                return inserter::size(args...) + serialization::calc_size(U);
-            }
-        };
-
-        template <typename ...Args, typename ...FArgs, typename F>
-        struct insert_param<sequence<F, Args...>, sequence<F, FArgs...>>
-        {
-            using inserter = insert_param<sequence<Args...>, sequence<FArgs...>>;
-
-            static void insert(uint8_t *dst, const F& f, const FArgs&... args)
-            {
-                serialization::serialize(f, dst);
-                inserter::insert(dst + serialization::calc_size(f), args...);
-            }
-
-            static size_t size(const F& f, const FArgs&... args)
-            {
-                return inserter::size(args...) + serialization::calc_size(f);
-            }
-        }; 
-
-        template <typename ...Args, typename ...FArgs, typename T0, typename T1>
-        struct insert_param<sequence<pair<T0, T1>, Args...>, sequence<FArgs...>>:
-            public insert_param<sequence<T1, Args...>, sequence<FArgs...>> {};
-
-        template <typename ...Args, typename ...FArgs, typename ...SubSequenceArgs>
-        struct insert_param<sequence<sequence<SubSequenceArgs...>, Args...>, sequence<FArgs...>>:
-            public insert_param<sequence<SubSequenceArgs..., Args...>, sequence<FArgs...>> {};
-
         template <typename ...Args>
         using package = package_creation::package<sequence<Args...>>;
 
@@ -266,7 +287,7 @@ namespace robot { namespace package_creation
             {
                 using pack = package<Args...>;
                 pack p;
-                insert_param<sequence<Args...>, sequence<FArgs...>>::insert(p.data, args...);
+                serialization::insert_param<sequence<Args...>, sequence<FArgs...>>::insert(p.data, args...);
                 return p;
             }
         };
@@ -276,7 +297,7 @@ namespace robot { namespace package_creation
             static package<Args...> make_package(const FArgs&... args)
             {
                 using pack = package<Args...>;
-                using inserter = insert_param<sequence<Args...>, sequence<FArgs...>>;
+                using inserter = serialization::insert_param<sequence<Args...>, sequence<FArgs...>>;
 
                 pack p(inserter::size(args...));
                 inserter::insert(p.data, args...);
