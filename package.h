@@ -167,9 +167,12 @@ namespace robot { namespace package_creation
         };
 
         template <typename ...Args>
-        struct const_buffer: public compile_time_size_calc_util<Args...>
+        class const_buffer: public compile_time_size_calc_util<Args...>
         {
             static const uint8_t data[];
+
+        public:
+            const uint8_t* get_data() const { return data; }
         };
 
         template <typename ...Args>
@@ -179,16 +182,17 @@ namespace robot { namespace package_creation
         const uint8_t const_buffer<Args...>::data[] = { Args::value... };
 
         template <bool is_const_size, typename NonConstArgs, typename ...Args>
-        struct buffer;
+        class buffer;
 
         template <typename... Args, typename ...NonConstArgs>
-        struct buffer<false, m::sequence<NonConstArgs...>, Args...>
+        class buffer<false, m::sequence<NonConstArgs...>, Args...>
         {
             using inserter = serialization::insert_param<m::sequence<Args...>, m::sequence<NonConstArgs...>>;
 
             const size_t d_size;
             uint8_t *data;
 
+        public:
             buffer(const NonConstArgs&... args):
                 d_size(inserter::size(args...)),
                 data(new uint8_t[d_size])
@@ -199,22 +203,26 @@ namespace robot { namespace package_creation
             ~buffer() { delete []data; }
 
             size_t data_size() const { return d_size; }
+            const uint8_t* get_data() const { return data; }
         };
 
         template <typename... Args, typename ...NonConstArgs>
-        struct buffer<true, m::sequence<NonConstArgs...>, Args...>: public compile_time_size_calc_util<Args...>
+        class buffer<true, m::sequence<NonConstArgs...>, Args...>: public compile_time_size_calc_util<Args...>
         {
             using inserter = serialization::insert_param<m::sequence<Args...>, m::sequence<NonConstArgs...>>;
             uint8_t data[size<Args...>::value];
 
+        public:
             buffer(const NonConstArgs&... args)
             {
                 inserter::insert(data, args...);
             }
+
+            const uint8_t* get_data() const { return data; }
         };
 
         template <typename... Args>
-        struct buffer<true, m::sequence<>, Args...>: public const_buffer<m::serialize<Args...>>
+        class buffer<true, m::sequence<>, Args...>: public const_buffer<m::serialize<Args...>>
         {};
     }
 

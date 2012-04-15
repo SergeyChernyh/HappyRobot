@@ -2,6 +2,7 @@
 #define __P2_AT_PROTOCOL__
 
 #include <vector>
+#include <string>
 
 #include "package.h"
 
@@ -67,7 +68,7 @@ namespace robot { namespace p2_at
     template <typename T>
     uint16_t chck_sum_calc(const package_creation::package<T>& pack)
     {
-        const uint8_t *ptr = pack.data;
+        const uint8_t *ptr = pack.get_data();
         uint16_t c = 0;
         uint16_t n = (pack.data_size());
 
