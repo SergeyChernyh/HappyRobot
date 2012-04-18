@@ -1,6 +1,10 @@
 #ifndef __METAPROGRAMMING_TYPE_TRAITS__
 #define __METAPROGRAMMING_TYPE_TRAITS__
 
+#include <array>
+#include <type_traits>
+#include <tuple>
+
 #include "data_types.h"
 
 namespace robot { namespace metaprogramming_tools

@@ -1,10 +1,6 @@
 #ifndef __METAPROGRAMMING_SERIALIZATION__
 #define __METAPROGRAMMING_SERIALIZATION__
 
-#include <array>
-#include <type_traits>
-#include <tuple>
-
 #include "type_traits.h"
 #include "element_access.h"
 #include "concatination.h"
