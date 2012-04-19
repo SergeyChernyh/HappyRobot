@@ -1,13 +1,16 @@
-#ifndef __SERIALIZATION__
-#define __SERIALIZATION__
+#ifndef __PACKAGE__
+#define __PACKAGE__
 
 #include <numeric>
 
 #include "metaprogramming/serialization.h"
 #include "metaprogramming/select.h"
+#include "metaprogramming/data_sequence.h"
 
 namespace robot { namespace package_creation
 {
+    template <typename ...Args>
+    using no_const_args = metaprogramming_tools::select<metaprogramming_tools::is_no_const, Args...>;
 
     template <typename ...Args>
     using size = metaprogramming_tools::byte_count<size_t, Args...>;
@@ -231,9 +234,9 @@ namespace robot { namespace package_creation
     package_buffer::buffer
     <
         metaprogramming_tools::is_const_size<Args...>::value,
-        metaprogramming_tools::select<metaprogramming_tools::is_no_const, Args...>,
+        no_const_args<Args...>,
         Args...
     >;
 }}
 
-#endif //__SERIALIZATION__
+#endif //__PACKAGE__
