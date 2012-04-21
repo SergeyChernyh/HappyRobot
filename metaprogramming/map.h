@@ -1,62 +1,67 @@
-#ifndef __METAPROGRAMMING_DATA_SEQUENSE__
-#define __METAPROGRAMMING_DATA_SEQUENSE__
+#ifndef __METAPROGRAMMING_MAP__
+#define __METAPROGRAMMING_MAP__
 
 #include "element_access.h"
 #include "type_traits.h"
 
 namespace robot { namespace metaprogramming_tools
 {
-    template <typename is_const, typename Key, typename T>
-    struct data_sequence_element;
-
-    template <typename Key, typename T>
-    struct data_sequence_element<std::false_type, Key, T>
+    namespace map_details
     {
-        T value;
-    };
+        template <typename is_const, typename Key, typename T>
+        struct map_element;
+
+        template <typename Key, typename T>
+        struct map_element<std::false_type, Key, T>
+        {
+            T value;
+        };
+
+        template <typename Key, typename T>
+        struct map_element<std::true_type, Key, T>
+        {};
+    }
 
     template <typename Key, typename T>
-    struct data_sequence_element<std::true_type, Key, T>
-    {};
+    using map_element = map_details::map_element<is_const<T>, Key, T>;
 
     template <typename ...Args>
-    struct data_sequence;
+    struct map;
 
     template <>
-    struct data_sequence<> {};
+    struct map<> {};
 
     template <typename T, typename ...Args>
-    struct data_sequence<T, Args...>:
-        public data_sequence_element
+    struct map<T, Args...>:
+        public map_element
                <
-                   is_const<T>,
                    typename convert_to_pair<T>::first,
                    typename convert_to_pair<T>::second
                >,
-        public data_sequence<Args...>
+        public map<Args...>
     {};
 
     namespace element_access
     {
         template <size_t n, typename ...Args>
-        struct at_c<n, data_sequence<Args...>>: public at_c<n, Args...> {};
+        struct at_c<n, map<Args...>>: public at_c<n, Args...> {};
 
         template <typename ...Args>
-        struct at_c<0, data_sequence<Args...>>: public at_c<0, Args...> {};
+        struct at_c<0, map<Args...>>: public at_c<0, Args...> {};
 
         template <typename Key, typename... Args>
-        struct at_key<Key, data_sequence<Args...>>: public at_key<Key, Args...> {};
+        struct at_key<Key, map<Args...>>: public at_key<Key, Args...> {};
 
         template <typename ...Args>
-        struct data_accessor;
+        struct map_accessor;
 
         template <typename Key, typename ...Args>
-        struct data_accessor<Key, data_sequence<Args...>>
+        struct map_accessor<Key, map<Args...>>
         {
             using res_t = typename at_key<Key, Args...>::type;
-            using element_t = data_sequence_element<is_const<res_t>, Key, res_t>;
+            using element_t = map_element<Key, res_t>;
 
-            static res_t& get(data_sequence<Args...>& p)
+            static res_t& get(map<Args...>& p)
             {
                 element_t *r = &p;
                 return r->value;
@@ -65,8 +70,8 @@ namespace robot { namespace metaprogramming_tools
     }
 
     template <typename Key, typename T>
-    at_key<Key, T> get(T& t) { return element_access::data_accessor<Key, T>::get(t); }
+    at_key<Key, T> get(T& t) { return element_access::map_accessor<Key, T>::get(t); }
 }}
 
-#endif //__METAPROGRAMMING_DATA_SEQUENSE__
+#endif //__METAPROGRAMMING_MAP__
 
