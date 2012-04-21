@@ -4,12 +4,13 @@
 #include "type_traits.h"
 #include "element_access.h"
 #include "concatination.h"
+#include "select.h"
 
 namespace robot { namespace utility
 {
     ///////////////////////////////////////////////////////
     //
-    //                  Bytes Count
+    //           Compile time size calculation
     //
     ///////////////////////////////////////////////////////
 
@@ -129,6 +130,12 @@ namespace robot { namespace utility
     template <size_t n, typename T, T C>
     using get_bytes = typename serialization::bytes::get_bytes<n, T, C>::type;
 
+    ///////////////////////////////////////////////////////
+    //
+    //            Compile time serialization
+    //
+    ///////////////////////////////////////////////////////
+
     namespace serialization
     {
         template <typename ...Args>
@@ -178,6 +185,146 @@ namespace robot { namespace utility
 
     template <typename ...Args>
     using serialize = typename serialization::serialize_wrap<is_const<Args...>, Args...>::type;
+
+    ///////////////////////////////////////////////////////
+    //
+    //           Run time size calculation
+    //
+    ///////////////////////////////////////////////////////
+
+    namespace run_time_calc_size
+    {
+        template <bool is_const_size, typename T>
+        struct size_c_tmp;
+
+        // const size type serialize
+
+        template <typename T>
+        struct size_c_tmp<true, T>
+        {
+            constexpr static size_t size(const T& t) { return byte_count<size_t, T>::value; }
+        };
+
+        // stl container serialize
+
+        template <typename T>
+        struct size_c_tmp<false, T>
+        {
+            using val_t = typename T::value_type;
+            using cref_t = typename T::const_reference;
+
+            static const bool c = is_const_size<val_t>::value;
+
+            static size_t size(const T& t)
+            {
+                return
+                std::accumulate
+                (
+                    t.begin(),
+                    t.end(),
+                    0,
+                    [](cref_t p0, cref_t p1) { return p0 + size_c_tmp<c, val_t>::size(p1); }
+                );
+            }
+        };
+
+        template <typename T>
+        constexpr size_t size_c(const T& t) { return size_c_tmp<is_const_size<T>::value, T>::size(t); }
+    }
+
+    namespace run_time_serialization
+    {
+        template <bool is_fundamental, typename T>
+        struct serializer;
+
+        template <typename T>
+        struct serializer<true, T>
+        {
+            static void serialize(const T& t, uint8_t *pos) { *reinterpret_cast<T*>(pos) = t; }
+        };
+
+        template <typename T>
+        struct serializer<false, T>
+        {
+            static void serialize(const T& t, uint8_t *pos)
+            {
+                using val_t = typename T::value_type;
+                using cref_t = typename T::const_reference;
+
+                for(cref_t x : t) {
+                    serializer<std::is_fundamental<val_t>::value, val_t>::serialize(x, pos);
+                    pos += run_time_calc_size::size_c(x);
+                }
+            }
+        };
+
+        template <typename T0, typename T1>
+        struct serializer<false, pair<T0, T1>>: public serializer<std::is_fundamental<T1>::value, T1> {};
+
+        template <typename T>
+        void serialize(uint8_t *pos, const T& t)
+        {
+            serializer<std::is_fundamental<T>::value, T>::serialize(t, pos);
+        }
+    }
+
+    namespace run_time_serialization_utility
+    {
+        template <typename T0, typename T1>
+        struct tmp_serializer;
+
+        template <>
+        struct tmp_serializer<sequence<>, sequence<>>
+        {
+            static void insert(uint8_t*){}
+            static size_t size() { return 0; }
+        };
+
+        template <typename ...Args, typename ...FArgs, typename F, F U>
+        struct tmp_serializer<sequence<std::integral_constant<F, U>, Args...>, sequence<FArgs...>>
+        {
+            using inserter = tmp_serializer<sequence<Args...>, sequence<FArgs...>>;
+
+            static void insert(uint8_t *dst, const FArgs&... args)
+            {
+                run_time_serialization::serialize(dst, U);
+                inserter::insert(dst + run_time_calc_size::size_c(U), args...);
+            }
+
+            static size_t size(const FArgs&... args)
+            {
+                return inserter::size(args...) + run_time_calc_size::size_c(U);
+            }
+        };
+
+        template <typename ...Args, typename ...FArgs, typename F>
+        struct tmp_serializer<sequence<F, Args...>, sequence<F, FArgs...>>
+        {
+            using inserter = tmp_serializer<sequence<Args...>, sequence<FArgs...>>;
+
+            static void insert(uint8_t *dst, const F& f, const FArgs&... args)
+            {
+                run_time_serialization::serialize(dst, f);
+                inserter::insert(dst + run_time_calc_size::size_c(f), args...);
+            }
+
+            static size_t size(const F& f, const FArgs&... args)
+            {
+                return inserter::size(args...) + run_time_calc_size::size_c(f);
+            }
+        };
+
+        template <typename ...Args, typename ...FArgs, typename T0, typename T1>
+        struct tmp_serializer<sequence<pair<T0, T1>, Args...>, sequence<FArgs...>>:
+            public tmp_serializer<sequence<T1, Args...>, sequence<FArgs...>> {};
+
+        template <typename ...Args, typename ...FArgs, typename ...SubSequenceArgs>
+        struct tmp_serializer<sequence<sequence<SubSequenceArgs...>, Args...>, sequence<FArgs...>>:
+            public tmp_serializer<sequence<SubSequenceArgs..., Args...>, sequence<FArgs...>> {};
+
+        template <typename ...Args>
+        struct serializer: public tmp_serializer<Args..., select<is_no_const, Args...>> {};
+    }
 }}
 
 #endif // __METAPROGRAMMING_SERIALIZATION__
