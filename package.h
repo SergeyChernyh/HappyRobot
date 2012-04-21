@@ -5,7 +5,7 @@
 
 #include "metaprogramming/serialization.h"
 #include "metaprogramming/select.h"
-#include "metaprogramming/data_sequence.h"
+#include "metaprogramming/map.h"
 
 namespace robot { namespace package_creation
 {
