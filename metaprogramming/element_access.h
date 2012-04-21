@@ -6,7 +6,7 @@
 
 #include "data_types.h"
 
-namespace robot { namespace metaprogramming_tools
+namespace robot { namespace utility
 {
     // by index ///////////////////////////////////////////
 
@@ -26,7 +26,7 @@ namespace robot { namespace metaprogramming_tools
             static_assert
             (
                 n <= sizeof...(Tail),
-                "robot::metaprogramming_tools::at: out of range"
+                "robot::utility::at: out of range"
             );
         };
 

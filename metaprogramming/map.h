@@ -4,7 +4,7 @@
 #include "element_access.h"
 #include "type_traits.h"
 
-namespace robot { namespace metaprogramming_tools
+namespace robot { namespace utility
 {
     namespace map_details
     {

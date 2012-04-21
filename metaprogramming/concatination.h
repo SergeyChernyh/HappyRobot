@@ -3,7 +3,7 @@
 
 #include "data_types.h"
 
-namespace robot { namespace metaprogramming_tools
+namespace robot { namespace utility
 {
     namespace concatination
     {

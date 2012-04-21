@@ -5,7 +5,7 @@
 
 #include "map.h"
 
-using namespace robot::metaprogramming_tools;
+using namespace robot::utility;
 
 using t = map<uint8_t, pair<int, int>, std::integral_constant<uint16_t, 8>, std::true_type, pair<uint8_t, char>, uint64_t>;
 

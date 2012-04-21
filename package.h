@@ -10,14 +10,14 @@
 namespace robot { namespace package_creation
 {
     template <typename ...Args>
-    using no_const_args = metaprogramming_tools::select<metaprogramming_tools::is_no_const, Args...>;
+    using no_const_args = utility::select<utility::is_no_const, Args...>;
 
     template <typename ...Args>
-    using size = metaprogramming_tools::byte_count<size_t, Args...>;
+    using size = utility::byte_count<size_t, Args...>;
 
     namespace serialization
     {
-        using namespace metaprogramming_tools;
+        using namespace utility;
 
         ///////////////////////////////////////////////////
         //
@@ -161,7 +161,7 @@ namespace robot { namespace package_creation
 
     namespace package_buffer
     {
-        namespace m = metaprogramming_tools;
+        namespace m = utility;
 
         template <typename... Args>
         struct compile_time_size_calc_util
@@ -233,7 +233,7 @@ namespace robot { namespace package_creation
     using package =
     package_buffer::buffer
     <
-        metaprogramming_tools::is_const_size<Args...>::value,
+        utility::is_const_size<Args...>::value,
         no_const_args<Args...>,
         Args...
     >;
