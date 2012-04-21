@@ -15,9 +15,13 @@ namespace robot { namespace package_creation
     template <typename ...Args>
     using size = utility::byte_count<size_t, Args...>;
 
+    template <typename ...Args>
+    using pattern = utility::sequence<Args...>;
+
     namespace package_buffer
     {
-        namespace m = utility;
+        namespace calc_size = utility::run_time_calc_size;
+        namespace serialization = utility::run_time_serialization;
 
         template <typename... Args>
         struct compile_time_size_calc_util
@@ -35,7 +39,7 @@ namespace robot { namespace package_creation
         };
 
         template <typename ...Args>
-        struct const_buffer<m::sequence<Args...>>: public const_buffer<Args...> {};
+        struct const_buffer<pattern<Args...>>: public const_buffer<Args...> {};
 
         template <typename ...Args>
         const uint8_t const_buffer<Args...>::data[] = { Args::value... };
@@ -44,19 +48,17 @@ namespace robot { namespace package_creation
         class buffer;
 
         template <typename... Args, typename ...NonConstArgs>
-        class buffer<false, m::sequence<NonConstArgs...>, Args...>
+        class buffer<false, pattern<NonConstArgs...>, Args...>
         {
-            using inserter = m::run_time_serialization_utility::serializer<m::sequence<Args...>>;
-
             const size_t d_size;
             uint8_t *data;
 
         public:
             buffer(const NonConstArgs&... args):
-                d_size(inserter::size(args...)),
+                d_size(calc_size::size_c<Args...>(args...)),
                 data(new uint8_t[d_size])
             {
-                inserter::insert(data, args...);
+                serialization::serialize<Args...>(data, args...);
             }
 
             ~buffer() { delete []data; }
@@ -66,22 +68,21 @@ namespace robot { namespace package_creation
         };
 
         template <typename... Args, typename ...NonConstArgs>
-        class buffer<true, m::sequence<NonConstArgs...>, Args...>: public compile_time_size_calc_util<Args...>
+        class buffer<true, pattern<NonConstArgs...>, Args...>: public compile_time_size_calc_util<Args...>
         {
-            using inserter = m::run_time_serialization_utility::serializer<m::sequence<Args...>>;
             uint8_t data[size<Args...>::value];
 
         public:
             buffer(const NonConstArgs&... args)
             {
-                inserter::insert(data, args...);
+                serialization::serialize<Args...>(data, args...);
             }
 
             const uint8_t* get_data() const { return data; }
         };
 
         template <typename... Args>
-        class buffer<true, m::sequence<>, Args...>: public const_buffer<m::serialize<Args...>>
+        class buffer<true, pattern<>, Args...>: public const_buffer<utility::serialize<Args...>>
         {};
     }
 

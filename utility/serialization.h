@@ -325,6 +325,24 @@ namespace robot { namespace utility
         template <typename ...Args>
         struct serializer: public tmp_serializer<Args..., select<is_no_const, Args...>> {};
     }
+
+    namespace run_time_calc_size
+    {
+        template <typename ...Args, typename ...Fargs>
+        size_t size_c(const Fargs&... args)
+        {
+            return run_time_serialization_utility::serializer<Args...>::size(args...);
+        }
+    }
+
+    namespace run_time_serialization
+    {
+        template <typename ...Args, typename ...Fargs>
+        void serialize(uint8_t *pos, const Fargs&... args)
+        {
+            run_time_serialization_utility::serializer<Args...>::insert(pos, args...);
+        }
+    }
 }}
 
 #endif // __METAPROGRAMMING_SERIALIZATION__
