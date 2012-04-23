@@ -66,11 +66,20 @@ namespace robot { namespace utility
                 element_t *r = &p;
                 return r->value;
             }
+
+            static const res_t& get(const map<Args...>& p)
+            {
+                const element_t *r = &p;
+                return r->value;
+            }
         };
     }
 
     template <typename Key, typename T>
-    at_key<Key, T> get(T& t) { return element_access::map_accessor<Key, T>::get(t); }
+    at_key<Key, T>& get(T& t) { return element_access::map_accessor<Key, T>::get(t); }
+
+    template <typename Key, typename T>
+    const at_key<Key, T>& get(const T& t) { return element_access::map_accessor<Key, T>::get(t); }
 }}
 
 #endif //__METAPROGRAMMING_MAP__
