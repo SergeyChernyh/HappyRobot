@@ -240,19 +240,28 @@ namespace robot { namespace utility
         template <typename T>
         struct serializer<true, T>
         {
-            static void serialize(const T& t, uint8_t *pos) { *reinterpret_cast<T*>(pos) = t; }
+            static void   serialize(const T& t,       uint8_t *pos) { *reinterpret_cast<T*>(pos) = t; }
+            static void deserialize(      T& t, const uint8_t *pos) { t = *reinterpret_cast<const T*>(pos); }
         };
 
         template <typename T>
         struct serializer<false, T>
         {
+            using val_t = typename T::value_type;
+            using cref_t = typename T::const_reference;
+
             static void serialize(const T& t, uint8_t *pos)
             {
-                using val_t = typename T::value_type;
-                using cref_t = typename T::const_reference;
-
                 for(cref_t x : t) {
                     serializer<std::is_fundamental<val_t>::value, val_t>::serialize(x, pos);
+                    pos += run_time_calc_size::size_c(x);
+                }
+            }
+
+            static void deserialize(T& t, const uint8_t *pos)
+            {
+                for(cref_t x : t) {
+                    serializer<std::is_fundamental<val_t>::value, val_t>::deserialize(x, pos);
                     pos += run_time_calc_size::size_c(x);
                 }
             }
@@ -266,6 +275,12 @@ namespace robot { namespace utility
         {
             serializer<std::is_fundamental<T>::value, T>::serialize(t, pos);
         }
+
+        template <typename T>
+        void deserialize(const uint8_t *pos, T& t)
+        {
+            serializer<std::is_fundamental<T>::value, T>::deserialize(t, pos);
+        }
     }
 
     namespace run_time_serialization_utility
@@ -276,7 +291,8 @@ namespace robot { namespace utility
         template <>
         struct tmp_serializer<sequence<>, sequence<>>
         {
-            static void insert(uint8_t*){}
+            static void serialize(uint8_t*){}
+            static void deserialize(const uint8_t*){}
             static size_t size() { return 0; }
         };
 
@@ -285,10 +301,16 @@ namespace robot { namespace utility
         {
             using inserter = tmp_serializer<sequence<Args...>, sequence<FArgs...>>;
 
-            static void insert(uint8_t *dst, const FArgs&... args)
+            static void serialize(uint8_t *dst, const FArgs&... args)
             {
                 run_time_serialization::serialize(dst, U);
-                inserter::insert(dst + run_time_calc_size::size_c(U), args...);
+                inserter::serialize(dst + run_time_calc_size::size_c(U), args...);
+            }
+
+            static void deserialize(const uint8_t *dst, FArgs&... args)
+            {
+                //run_time_serialization::deserialize(dst, U); TODO add check
+                inserter::deserialize(dst + run_time_calc_size::size_c(U), args...);
             }
 
             static size_t size(const FArgs&... args)
@@ -302,10 +324,16 @@ namespace robot { namespace utility
         {
             using inserter = tmp_serializer<sequence<Args...>, sequence<FArgs...>>;
 
-            static void insert(uint8_t *dst, const F& f, const FArgs&... args)
+            static void serialize(uint8_t *dst, const F& f, const FArgs&... args)
             {
                 run_time_serialization::serialize(dst, f);
-                inserter::insert(dst + run_time_calc_size::size_c(f), args...);
+                inserter::serialize(dst + run_time_calc_size::size_c(f), args...);
+            }
+
+            static void deserialize(const uint8_t *dst, F& f, FArgs&... args)
+            {
+                run_time_serialization::deserialize(dst, f);
+                inserter::deserialize(dst + run_time_calc_size::size_c(f), args...);
             }
 
             static size_t size(const F& f, const FArgs&... args)
@@ -340,7 +368,13 @@ namespace robot { namespace utility
         template <typename ...Args, typename ...Fargs>
         void serialize(uint8_t *pos, const Fargs&... args)
         {
-            run_time_serialization_utility::serializer<Args...>::insert(pos, args...);
+            run_time_serialization_utility::serializer<Args...>::serialize(pos, args...);
+        }
+
+        template <typename ...Args, typename ...Fargs>
+        void deserialize(const uint8_t *pos, Fargs&... args)
+        {
+            run_time_serialization_utility::serializer<Args...>::deserialize(pos, args...);
         }
     }
 }}
