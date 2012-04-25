@@ -3,9 +3,9 @@
 
 #include <numeric>
 
-#include "utility/serialization.h"
-#include "utility/select.h"
-#include "utility/map.h"
+#include "metaprogramming/serialization.h"
+#include "metaprogramming/select.h"
+#include "metaprogramming/map.h"
 
 namespace robot { namespace package_creation
 {
@@ -26,7 +26,7 @@ namespace robot { namespace package_creation
         template <typename T>
         struct size_c_tmp<true, T>
         {
-            constexpr static size_t size(const T& t) { return utility::byte_count<size_t, T>::value; }
+            constexpr static size_t size(const T& t) { return metaprogramming::byte_count<size_t, T>::value; }
         };
 
         // stl container serialize
@@ -37,7 +37,7 @@ namespace robot { namespace package_creation
             using val_t = typename T::value_type;
             using cref_t = typename T::const_reference;
 
-            static const bool c = utility::is_const_size<val_t>::value;
+            static const bool c = metaprogramming::is_const_size<val_t>::value;
 
             static size_t size(const T& t)
             {
@@ -53,7 +53,7 @@ namespace robot { namespace package_creation
         };
 
         template <typename T>
-        constexpr size_t size_c(const T& t) { return size_c_tmp<utility::is_const_size<T>::value, T>::size(t); }
+        constexpr size_t size_c(const T& t) { return size_c_tmp<metaprogramming::is_const_size<T>::value, T>::size(t); }
     }
 
     namespace run_time_serialization
@@ -92,7 +92,7 @@ namespace robot { namespace package_creation
         };
 
         template <typename T0, typename T1>
-        struct serializer<false, utility::pair<T0, T1>>: public serializer<std::is_fundamental<T1>::value, T1> {};
+        struct serializer<false, metaprogramming::pair<T0, T1>>: public serializer<std::is_fundamental<T1>::value, T1> {};
 
         template <typename T>
         void serialize(uint8_t *pos, const T& t)
@@ -109,7 +109,7 @@ namespace robot { namespace package_creation
 
     namespace run_time_serialization_utility
     {
-        using namespace utility;
+        using namespace metaprogramming;
 
         template <typename T0, typename T1>
         struct tmp_serializer;
@@ -205,13 +205,13 @@ namespace robot { namespace package_creation
     }
 
     template <typename ...Args>
-    using no_const_args = utility::select<utility::is_no_const, Args...>;
+    using no_const_args = metaprogramming::select<metaprogramming::is_no_const, Args...>;
 
     template <typename ...Args>
-    using size = utility::byte_count<size_t, Args...>;
+    using size = metaprogramming::byte_count<size_t, Args...>;
 
     template <typename ...Args>
-    using pattern = utility::sequence<Args...>;
+    using pattern = metaprogramming::sequence<Args...>;
 
     namespace package_buffer
     {
@@ -277,7 +277,7 @@ namespace robot { namespace package_creation
         };
 
         template <typename... Args>
-        class buffer<true, pattern<>, Args...>: public const_buffer<utility::serialize<Args...>>
+        class buffer<true, pattern<>, Args...>: public const_buffer<metaprogramming::serialize<Args...>>
         {};
     }
 
@@ -285,7 +285,7 @@ namespace robot { namespace package_creation
     using package =
     package_buffer::buffer
     <
-        utility::is_const_size<Args...>::value,
+        metaprogramming::is_const_size<Args...>::value,
         no_const_args<Args...>,
         Args...
     >;

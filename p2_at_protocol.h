@@ -8,7 +8,7 @@
 
 namespace robot { namespace p2_at
 {
-    using namespace utility;
+    using namespace metaprogramming;
 
     using nothing = sequence<>;
 

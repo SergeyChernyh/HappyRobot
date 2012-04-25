@@ -1,7 +1,7 @@
 #ifndef __METAPROGRAMMING_DATA_TYPES__
 #define __METAPROGRAMMING_DATA_TYPES__
 
-namespace robot { namespace utility
+namespace robot { namespace metaprogramming
 {
     ///////////////////////////////////////////////////////
     //

@@ -3,7 +3,7 @@
 
 #include "concatination.h"
 
-namespace robot { namespace utility
+namespace robot { namespace metaprogramming
 {
     namespace selection
     {

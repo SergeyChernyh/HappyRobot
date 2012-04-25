@@ -7,7 +7,7 @@
 
 #include "data_types.h"
 
-namespace robot { namespace utility
+namespace robot { namespace metaprogramming
 {
     ///////////////////////////////////////////////////////
     //

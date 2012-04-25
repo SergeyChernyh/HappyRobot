@@ -6,7 +6,7 @@
 #include "concatination.h"
 #include "select.h"
 
-namespace robot { namespace utility
+namespace robot { namespace metaprogramming
 {
     ///////////////////////////////////////////////////////
     //
@@ -94,7 +94,7 @@ namespace robot { namespace utility
     template <typename T, size_t n>
     struct tmp_divisor
     {
-        static_assert(n < sizeof(T), "robot::utility::tmp_divisor");
+        static_assert(n < sizeof(T), "robot::metaprogramming::tmp_divisor");
 
         static const T value = tmp_divisor<T, n - 1>::value * 0x100;
     };
