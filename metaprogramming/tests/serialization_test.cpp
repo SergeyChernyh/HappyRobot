@@ -2,7 +2,7 @@
 
 #include "serialization.h"
 
-using namespace robot::utility;
+using namespace robot::metaprogramming;
 
 using q0 = std::integral_constant<uint32_t, 0xff00ff00>;
 using q1 = std::integral_constant<uint16_t, 0x0>;
@@ -32,8 +32,6 @@ struct test
         >
     >::value, "err0");
 };
-
-using namespace robot::utility;
 
 using s0 = sequence<long, char, int, int*>;
 using s1 = sequence<char*, sequence<int>>;
