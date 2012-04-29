@@ -20,7 +20,10 @@ namespace robot { namespace metaprogramming
         template <typename T> struct value_type { using type = T; };
 
         template <typename T, T C>
-        struct value_type<std::integral_constant<T,C>> { using type = T; };
+        struct value_type<std::integral_constant<T, C>> { using type = T; };
+
+        template <typename T0, typename T1>
+        struct value_type<pair<T0, T1>>: public value_type<T1> {};
     }
 
     template <typename T>
