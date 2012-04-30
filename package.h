@@ -6,6 +6,8 @@
 #include "metaprogramming/serialization.h"
 #include "metaprogramming/select.h"
 
+#include "container.h"
+
 namespace robot { namespace package_creation
 {
     template <typename ...Args>

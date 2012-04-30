@@ -1,15 +1,13 @@
-#ifndef __METAPROGRAMMING_CONTAINER__
-#define __METAPROGRAMMING_CONTAINER__
+#ifndef __CONTAINER__
+#define __CONTAINER__
 
-#include "element_access.h"
-#include "type_traits.h"
+#include "metaprogramming/element_access.h"
+#include "metaprogramming/type_traits.h"
 
-namespace robot { namespace container
+namespace robot { namespace metaprogramming
 {
     namespace details
     {
-        namespace m = metaprogramming;
-
         template <typename T>
         struct element_value
         {
@@ -20,11 +18,11 @@ namespace robot { namespace container
 
         template <typename T>
         using element_storage =
-        m::at_key
+        at_key
         <
-            m::is_const<T>,
-            m::pair<std::true_type , nothing>,
-            m::pair<std::false_type, element_value<T>>
+            is_const<T>,
+            pair<std::true_type , nothing>,
+            pair<std::false_type, element_value<T>>
         >;
 
         template <typename ...>
@@ -35,7 +33,8 @@ namespace robot { namespace container
         {};
 
         template <typename Key, typename T, typename ...Signature>
-        struct element<m::pair<Key, T>, Signature...>: public element_storage<T>
+        struct element<pair<Key, T>, Signature...>:
+            public element<T, Signature...>
         {};
 
         template <>
@@ -43,18 +42,18 @@ namespace robot { namespace container
         {};
     }
 
-    template <typename ...>
-    struct container;
-
     template <>
-    struct container<> {};
+    struct sequence<> {};
 
     template <typename Head, typename ...Tail>
-    struct container<Head, Tail...>:
-        public container<Tail...>,
+    struct sequence<Head, Tail...>:
+        public sequence<Tail...>,
         public details::element<Head, Tail...>
     {};
+}
 
+namespace sequence_access
+{
     namespace element_access
     {
         namespace m = metaprogramming;
@@ -70,7 +69,7 @@ namespace robot { namespace container
         template <typename Head, typename ...Tail>
         struct access<m::sequence<Tail...>, m::sequence<Head, Tail...>>
         {
-            using type = details::element<Head, Tail...>;
+            using type = m::details::element<Head, Tail...>;
         };
 
         template <typename ...ElementSignature>
@@ -87,7 +86,7 @@ namespace robot { namespace container
         struct accessor;
 
         template <typename ...ElementSignature, typename ...Args>
-        struct accessor<m::sequence<ElementSignature...>, container<Args...>>
+        struct accessor<m::sequence<ElementSignature...>, m::sequence<Args...>>
         {
             using type =
             typename
@@ -142,7 +141,7 @@ namespace robot { namespace container
         template <typename ...Signature>
         struct element_<m::sequence<Signature...>>
         {
-            using type = details::element<Signature...>;
+            using type = m::details::element<Signature...>;
         };
 
         template <typename T>
@@ -156,7 +155,7 @@ namespace robot { namespace container
     }
     
     template <size_t C, typename ...Args>
-    element_access::at_c<C, Args...>& at_c(container<Args...>& p)
+    element_access::at_c<C, Args...>& at_c(metaprogramming::sequence<Args...>& p)
     {
         using namespace element_access;
         element<typename signature_at_c<C, Args...>::type> *r = &p;
@@ -164,7 +163,7 @@ namespace robot { namespace container
     }
 
     template <size_t C, typename ...Args>
-    const element_access::at_c<C, Args...>& at_c(const container<Args...>& p)
+    const element_access::at_c<C, Args...>& at_c(const metaprogramming::sequence<Args...>& p)
     {
         using namespace element_access;
         element<typename signature_at_c<C, Args...>::type> *r = &p;
@@ -172,7 +171,7 @@ namespace robot { namespace container
     }
 
     template <typename Key, typename ...Args>
-    element_access::at_key<Key, Args...>& at_key(container<Args...>& p)
+    element_access::at_key<Key, Args...>& at_key(metaprogramming::sequence<Args...>& p)
     {
         using namespace element_access;
         element<typename signature_at_key<Key, Args...>::type> *r = &p;
@@ -180,7 +179,7 @@ namespace robot { namespace container
     }
     
     template <typename Key, typename ...Args>
-    const element_access::at_key<Key, Args...>& at_key(const container<Args...>& p)
+    const element_access::at_key<Key, Args...>& at_key(const metaprogramming::sequence<Args...>& p)
     {
         using namespace element_access;
         element<typename signature_at_key<Key, Args...>::type> *r = &p;
@@ -188,5 +187,4 @@ namespace robot { namespace container
     }
 }}
 
-#endif //__METAPROGRAMMING_CONTAINER__
-
+#endif //__CONTAINER__

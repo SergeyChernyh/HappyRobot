@@ -11,7 +11,7 @@ namespace robot { namespace metaprogramming
 
     struct unspecified {};
 
-    template <typename ...Args> struct sequence {};
+    template <typename ...Args> struct sequence;
 
     ///////////////////////////////////////////////////////
     //
@@ -24,10 +24,6 @@ namespace robot { namespace metaprogramming
     {
         using first  = First;
         using second = Second;
-
-        second value;
-
-        pair(const second& v): value(v) {}
     };
 
     namespace to_pair
