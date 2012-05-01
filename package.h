@@ -6,7 +6,7 @@
 #include "metaprogramming/serialization.h"
 #include "metaprogramming/select.h"
 
-#include "container.h"
+#include "sequence.h"
 
 namespace robot { namespace package_creation
 {
