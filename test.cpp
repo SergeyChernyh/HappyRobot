@@ -79,7 +79,7 @@ int main(int argc, const char* argv[])
 
     while(true) {
         send_cmd<0>(tcp);
-        Sleep(1000);
+        robot::delay(1000);
     }
 
     return 0;
