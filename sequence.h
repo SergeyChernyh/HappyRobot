@@ -166,7 +166,7 @@ namespace sequence_access
     const element_access::at_c<C, Args...>& at_c(const metaprogramming::sequence<Args...>& p)
     {
         using namespace element_access;
-        element<typename signature_at_c<C, Args...>::type> *r = &p;
+        const element<typename signature_at_c<C, Args...>::type> *r = &p;
         return r->value;
     }
 
@@ -182,9 +182,96 @@ namespace sequence_access
     const element_access::at_key<Key, Args...>& at_key(const metaprogramming::sequence<Args...>& p)
     {
         using namespace element_access;
-        element<typename signature_at_key<Key, Args...>::type> *r = &p;
+        const element<typename signature_at_key<Key, Args...>::type> *r = &p;
         return r->value;
     }
-}}
+}
+
+namespace algorithm
+{
+    namespace m = metaprogramming;
+
+    template <typename F, typename T>
+    struct for_each_struct;
+
+    template <typename F>
+    struct for_each_struct<F, m::sequence<>>
+    {
+        static void do_(F& f, m::sequence<>& s) {}
+        static void do_(F& f, const m::sequence<>& s) {}
+    };
+
+    template <typename F, typename Head, typename ...Args>
+    struct for_each_struct<F, m::sequence<Head, Args...>>
+    {
+        static void do_(F& f, m::sequence<Head, Args...>& s)
+        {
+            f(sequence_access::at_c<0>(s));
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+
+        static void do_(F& f, const m::sequence<Head, Args...>& s)
+        {
+            f(sequence_access::at_c<0>(s));
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+    };
+
+    template <typename F, typename Head, Head C, typename ...Args>
+    struct for_each_struct<F, m::sequence<std::integral_constant<Head, C>, Args...>>
+    {
+        static void do_(F& f, m::sequence<std::integral_constant<Head, C>, Args...>& s)
+        {
+            f(C);
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+
+        static void do_(F& f, const m::sequence<std::integral_constant<Head, C>, Args...>& s)
+        {
+            f(C);
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+    };
+
+    template <typename F, typename HeadKey, typename Head, typename ...Args>
+    struct for_each_struct<F, m::sequence<m::pair<HeadKey, Head>, Args...>>
+    {
+        static void do_(F& f, m::sequence<m::pair<HeadKey, Head>, Args...>& s)
+        {
+            f(sequence_access::at_c<0>(s));
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+
+        static void do_(F& f, const m::sequence<m::pair<HeadKey, Head>, Args...>& s)
+        {
+            f(sequence_access::at_c<0>(s));
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+    };
+
+    template <typename F, typename HeadKey, typename Head, Head C, typename ...Args>
+    struct for_each_struct<F, m::sequence<m::pair<HeadKey, std::integral_constant<Head, C>>, Args...>>
+    {
+        static void do_(F& f, m::sequence<m::pair<HeadKey, std::integral_constant<Head, C>>, Args...>& s)
+        {
+            f(C);
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+
+        static void do_(F& f, const m::sequence<m::pair<HeadKey, std::integral_constant<Head, C>>, Args...>& s)
+        {
+            f(C);
+            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
+        }
+    };
+
+    template <typename F, typename T>
+    void for_each(F& f, T& t) { for_each_struct<F, T>::do_(f, t); }
+
+    template <typename F, typename T>
+    void for_each(F& f, const T& t) { for_each_struct<F, T>::do_(f, t); }
+}
+
+}
 
 #endif //__CONTAINER__
