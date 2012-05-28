@@ -9,19 +9,27 @@ namespace robot { namespace metaprogramming
     namespace details
     {
         template <typename T>
-        struct element_value
+        class element_value
         {
             T value;
+
+        public:
+            const T& get() const { return value; }
+                  T& get()       { return value; }
         };
 
-        struct nothing {};
+        template <typename T>
+        struct nothing
+        {
+            T get() const { return T(); };
+        };
 
         template <typename T>
         using element_storage =
         at_key
         <
             is_const<T>,
-            pair<std::true_type , nothing>,
+            pair<std::true_type , nothing<T>>,
             pair<std::false_type, element_value<T>>
         >;
 
@@ -159,7 +167,7 @@ namespace sequence_access
     {
         using namespace element_access;
         element<typename signature_at_c<C, Args...>::type> *r = &p;
-        return r->value;
+        return r->get();
     }
 
     template <size_t C, typename ...Args>
@@ -167,7 +175,7 @@ namespace sequence_access
     {
         using namespace element_access;
         const element<typename signature_at_c<C, Args...>::type> *r = &p;
-        return r->value;
+        return r->get();
     }
 
     template <typename Key, typename ...Args>
@@ -175,7 +183,7 @@ namespace sequence_access
     {
         using namespace element_access;
         element<typename signature_at_key<Key, Args...>::type> *r = &p;
-        return r->value;
+        return r->get();
     }
     
     template <typename Key, typename ...Args>
@@ -183,13 +191,49 @@ namespace sequence_access
     {
         using namespace element_access;
         const element<typename signature_at_key<Key, Args...>::type> *r = &p;
-        return r->value;
+        return r->get();
+    }
+
+    template <size_t C, typename ...Args>
+    element_access::at_c<C, Args...> value_at_c(const metaprogramming::sequence<Args...>& p)
+    {
+        using namespace element_access;
+        const element<typename signature_at_c<C, Args...>::type> *r = &p;
+        return r->get();
+    }
+    
+    template <typename Key, typename ...Args>
+    element_access::at_key<Key, Args...> value_at_key(const metaprogramming::sequence<Args...>& p)
+    {
+        using namespace element_access;
+        const element<typename signature_at_key<Key, Args...>::type> *r = &p;
+        return r->get();
     }
 }
 
 namespace algorithm
 {
     namespace m = metaprogramming;
+
+    template <bool, typename>
+    struct for_each_argument;
+
+    template <typename T>
+    struct for_each_argument<true, T>
+    {
+        template <typename S>
+        static m::value_type<T> get(const S& s) { return m::value_type<T>(); }
+    };
+
+    template <typename T>
+    struct for_each_argument<false, T>
+    {
+        template <typename S>
+        static m::value_type<T>& get(S& s) { return sequence_access::at_c<0>(s); }
+
+        template <typename S>
+        static const m::value_type<T>& get(const S& s) { return sequence_access::at_c<0>(s); }
+    };
 
     template <typename F, typename T>
     struct for_each_struct;
@@ -206,61 +250,13 @@ namespace algorithm
     {
         static void do_(F& f, m::sequence<Head, Args...>& s)
         {
-            f(sequence_access::at_c<0>(s));
+            f(for_each_argument<m::is_const<Head>::value, Head>::get(s));
             for_each_struct<F, m::sequence<Args...>>::do_(f, s);
         }
 
         static void do_(F& f, const m::sequence<Head, Args...>& s)
         {
-            f(sequence_access::at_c<0>(s));
-            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
-        }
-    };
-
-    template <typename F, typename Head, Head C, typename ...Args>
-    struct for_each_struct<F, m::sequence<std::integral_constant<Head, C>, Args...>>
-    {
-        static void do_(F& f, m::sequence<std::integral_constant<Head, C>, Args...>& s)
-        {
-            f(C);
-            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
-        }
-
-        static void do_(F& f, const m::sequence<std::integral_constant<Head, C>, Args...>& s)
-        {
-            f(C);
-            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
-        }
-    };
-
-    template <typename F, typename HeadKey, typename Head, typename ...Args>
-    struct for_each_struct<F, m::sequence<m::pair<HeadKey, Head>, Args...>>
-    {
-        static void do_(F& f, m::sequence<m::pair<HeadKey, Head>, Args...>& s)
-        {
-            f(sequence_access::at_c<0>(s));
-            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
-        }
-
-        static void do_(F& f, const m::sequence<m::pair<HeadKey, Head>, Args...>& s)
-        {
-            f(sequence_access::at_c<0>(s));
-            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
-        }
-    };
-
-    template <typename F, typename HeadKey, typename Head, Head C, typename ...Args>
-    struct for_each_struct<F, m::sequence<m::pair<HeadKey, std::integral_constant<Head, C>>, Args...>>
-    {
-        static void do_(F& f, m::sequence<m::pair<HeadKey, std::integral_constant<Head, C>>, Args...>& s)
-        {
-            f(C);
-            for_each_struct<F, m::sequence<Args...>>::do_(f, s);
-        }
-
-        static void do_(F& f, const m::sequence<m::pair<HeadKey, std::integral_constant<Head, C>>, Args...>& s)
-        {
-            f(C);
+            f(for_each_argument<m::is_const<Head>::value, Head>::get(s));
             for_each_struct<F, m::sequence<Args...>>::do_(f, s);
         }
     };

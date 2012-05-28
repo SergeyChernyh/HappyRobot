@@ -32,6 +32,9 @@ struct print
     template <typename T>
     void operator() (const T& t) { std::cout << t << " "; }
 
+    template <typename T, T C>
+    void operator() (const std::integral_constant<T, C>& t) { std::cout << C << " "; }
+
     template <typename ...T>
     void operator() (const m::sequence<T...>& t)
     {
