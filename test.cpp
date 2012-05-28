@@ -88,12 +88,19 @@ int main(int argc, const char* argv[])
 
     uint8_t buffer[0xff];
 
-    send_cmd<0>(tcp);
+    auto read_message =
+    [&]()
+    {
+        using header = p2_at::message_header<metaprogramming::unspecified>;
+        uint8_t byte_count = 0;
+        tcp.read(buffer, size<header>::value);
+        parser<header>::parse(buffer, byte_count);
+        tcp.read(buffer + size<header>::value, byte_count);
+    };
 
-    tcp.read(buffer, 3);
-
-    send_cmd<1>(tcp);
-    send_cmd<2>(tcp);
+    send_cmd<0>(tcp); read_message();
+    send_cmd<1>(tcp); read_message();
+    send_cmd<2>(tcp); read_message();
 
     send_cmd<1>(tcp);
 
@@ -104,8 +111,20 @@ int main(int argc, const char* argv[])
     send_vec_cmd<11>(1200, tcp);
 
     while(true) {
+        namespace a = sequence_access;
+
+        read_message();
+        p2_at::message<p2_at::sip> server_info;
+        parser<p2_at::message<p2_at::sip>>::parse(buffer, server_info);
+
+        auto sonars = a::at_key<p2_at::sonar_measurements>(a::at_key<p2_at::message_body_key>(server_info));
+
+        std::cout << "Sonars\n";
+        for(size_t i = 0; i < sonars.size(); i++)
+            std::cout << a::at_key<p2_at::sonar_number>(sonars[i]) << ") " << a::at_key<p2_at::sonar_range>(sonars[i]) << std::endl;
+
         send_cmd<0>(tcp);
-        robot::delay(1000);
+        //robot::delay(1000);
     }
 
     return 0;

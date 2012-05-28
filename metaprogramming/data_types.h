@@ -9,7 +9,7 @@ namespace robot { namespace metaprogramming
     //
     ///////////////////////////////////////////////////////
 
-    struct unspecified {};
+    struct unspecified;
 
     template <typename ...Args> struct sequence;
 

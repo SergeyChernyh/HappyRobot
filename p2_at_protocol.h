@@ -96,8 +96,8 @@ namespace robot { namespace p2_at
     using message_header =
     sequence
     <
-        pair<head_key        , head_t>,
-        pair<byte_count_key  , byte_count_t<T>>
+        pair<head_key      , head_t>,
+        pair<byte_count_key, byte_count_t<T>>
     >;
 
     template <typename T>
@@ -105,8 +105,6 @@ namespace robot { namespace p2_at
     sequence
     <
         pair<message_header_key, message_header<T>>,
-        //pair<head_key        , head_t>,
-        //pair<byte_count_key  , byte_count_t<T>>,
         pair<message_body_key  , T>,
         pair<chck_sum_key      , chck_sum_t<T>>
     >;
@@ -163,6 +161,8 @@ namespace robot { namespace p2_at
     struct compass;
 
     struct sonar_measurements;
+    struct sonar_number;
+    struct sonar_range;
 
     struct timer;
     struct analog;
@@ -187,7 +187,19 @@ namespace robot { namespace p2_at
         pair<flags, uint16_t>,
         pair<compass, uint8_t>,
 
-        pair<sonar_measurements, package_creation::repeat<uint16_t, uint8_t>>,
+        pair
+        <
+            sonar_measurements,
+            package_creation::repeat
+            <
+                sequence
+                <
+                    pair<sonar_number, uint8_t>,
+                    pair<sonar_range, uint16_t>
+                >,
+                uint8_t
+            >
+        >,
 
         pair<timer, uint16_t>,
         pair<analog, uint8_t>,

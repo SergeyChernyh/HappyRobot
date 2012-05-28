@@ -15,8 +15,8 @@
 
 namespace robot { namespace package_creation
 {
-    template <typename ValueType, typename SizeType = metaprogramming::sequence<>, template<typename ...T> class ContainerType = std::vector>
-    class repeat: public ContainerType<ValueType>
+    template <typename ValueType, typename SizeType>
+    class repeat: public std::vector<ValueType>
     {};
 
     template <typename ...Args>
@@ -67,7 +67,7 @@ namespace robot { namespace package_creation
                     t.begin(),
                     t.end(),
                     0,
-                    [](cref_t p0, cref_t p1) { return p0 + size_c_tmp<c, val_t>::size(p1); }
+                    [](size_t p0, cref_t p1) { return p0 + size_c_tmp<c, val_t>::size(p1); }
                 );
             }
         };
@@ -85,16 +85,16 @@ namespace robot { namespace package_creation
 
         template <typename T, size_t C> class size_c_tmp<false, std::array<T, C>>: public stl_compatible_container_size_c<std::array<T, C>> {};
 
-        template <typename T, typename Size, template<typename A> class Container>
-        class size_c_tmp<false, repeat<T, Size, Container>>
+        template <typename T, typename Size>
+        class size_c_tmp<false, repeat<T, Size>>
         {
-            using type = repeat<T, Size, Container>;
+            using type = repeat<T, Size>;
         public:
-            static size_t serialize(const type& t)
+            static size_t size(const type& t)
             {
                 return
-                size_c_tmp<true, Size>::serialize(t.size()) +
-                size_c_tmp<false, Container<T>>::serialize(t.size());
+                size_c_tmp<true, Size>::size(t.size()) +
+                size_c_tmp<false, std::vector<T>>::size(t);
             }
         };
 
@@ -156,23 +156,23 @@ namespace robot { namespace package_creation
 
         template <typename T, size_t C> class serialize_tmp<false, std::array<T, C>>: public stl_compatible_container_serialize<std::array<T, C>> {};
 
-        template <typename T, typename Size, template<typename A> class Container>
-        class serialize_tmp<false, repeat<T, Size, Container>>
+        template <typename T, typename Size>
+        class serialize_tmp<false, repeat<T, Size>>
         {
-            using type = repeat<T, Size, Container>;
+            using type = repeat<T, Size>;
         public:
             static void serialize(uint8_t *pos, const type& t)
             {
                 serialize_tmp<true, Size>::serialize(pos, t.size());
-                serialize_tmp<false, Container<T>>::serialize(pos, t.size());
+                serialize_tmp<false, std::vector<T>>::serialize(pos, t.size());
             }
 
             static void deserialize(const uint8_t *pos, type& t)
             {
-                size_t size;
+                Size size;
                 serialize_tmp<true, Size>::deserialize(pos, size);
                 t.resize(size);
-                serialize_tmp<false, Container<T>>::deserialize(pos, t.size());
+                serialize_tmp<false, std::vector<T>>::deserialize(pos, t);
             }
         };
 
@@ -524,27 +524,37 @@ namespace robot { namespace package_creation
         Args...
     >;
 
-     
-    template <typename NonConstArgs, typename Args>
-    class parser;
+    namespace package_parser
+    { 
+        template <typename NonConstArgs, typename Args>
+        class parser;
 
-    template <typename... Args, typename ...NonConstArgs>
-    class parser<pattern<NonConstArgs...>, pattern<Args...>>:
-        serialization::serializer<pattern<Args...>, pattern<NonConstArgs...>>,
-        serialization::sequence_serialize 
-    {
-    public:
-        static void parse(const uint8_t* src, NonConstArgs&... args)
+        template <typename... Args, typename ...NonConstArgs>
+        class parser<pattern<NonConstArgs...>, pattern<Args...>>:
+            serialization::serializer<pattern<Args...>, pattern<NonConstArgs...>>,
+            serialization::sequence_serialize 
         {
-            deserialize(src, args...);
-        }
+        public:
+            static void parse(const uint8_t* src, NonConstArgs&... args)
+            {
+                serialization::serializer<pattern<Args...>, pattern<NonConstArgs...>>::deserialize(src, args...);
+            }
+    
+            static void parse(const uint8_t* src, pattern<Args...>& p)
+            {                
+                sequence_deserializer s(src);
+                s(p);
+            }
+        };
+    }
 
-        static void parse(const uint8_t* src, pattern<Args...>& p)
-        {                
-            sequence_deserializer s(src);
-            s(p);
-        }
-    };
+    template <typename ...Args>
+    using parser =
+    package_parser::parser
+    <
+        no_const_args<Args...>,
+        Args...
+    >;
 }}
 
 #endif //__PACKAGE__
