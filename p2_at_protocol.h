@@ -85,19 +85,30 @@ namespace robot { namespace p2_at
 
     /////// Message Format ////////////////////////////////
 
-    struct head_key{};
-    struct byte_count_key{};
-    struct message_body_key{};
-    struct chck_sum_key{};
+    struct message_header_key;
+
+    struct head_key;
+    struct byte_count_key;
+    struct message_body_key;
+    struct chck_sum_key;
+
+    template <typename T>
+    using message_header =
+    sequence
+    <
+        pair<head_key        , head_t>,
+        pair<byte_count_key  , byte_count_t<T>>
+    >;
 
     template <typename T>
     using message =
     sequence
     <
-        pair<head_key        , head_t>,
-        pair<byte_count_key  , byte_count_t<T>>,
-        pair<message_body_key, T>,
-        pair<chck_sum_key    , chck_sum_t<T>>
+        pair<message_header_key, message_header<T>>,
+        //pair<head_key        , head_t>,
+        //pair<byte_count_key  , byte_count_t<T>>,
+        pair<message_body_key  , T>,
+        pair<chck_sum_key      , chck_sum_t<T>>
     >;
 
     //////////// Client Cmd ///////////////////////////////
@@ -114,13 +125,74 @@ namespace robot { namespace p2_at
         pair<std::vector<int16_t>, constant<uint8_t, 0x3B>> // TODO DELETE
     >;
 
+    struct arg_key;
+
     template <uint8_t cmd_num, typename arg = nothing>
     using command =
     sequence
     <
         constant<uint8_t, cmd_num>,
         at_key<value_type<arg>, arg_id_table>,
-        arg
+        pair<arg_key, arg>
+    >;
+
+    //////////// Echo /////////////////////////////////////
+
+    template <uint8_t cmd_num>
+    using echo =
+    sequence
+    <
+        constant<uint8_t, cmd_num>
+    >;
+
+    //////////// Sip //////////////////////////////////////
+
+    struct status_key;
+
+    struct x_pos_key;
+    struct y_pos_key;    
+    struct th_pos_key;
+
+    struct l_vel_key;    
+    struct r_vel_key;
+
+    struct battery;
+    struct stall_and_bumpers;
+    struct control;
+    struct flags;
+    struct compass;
+
+    struct sonar_measurements;
+
+    struct timer;
+    struct analog;
+    struct digin;
+    struct digout;
+
+    using sip =
+    sequence
+    <
+        pair<status_key, uint8_t>,
+
+        pair<x_pos_key, uint16_t>,
+        pair<y_pos_key, uint16_t>,
+        pair<th_pos_key, int16_t>,
+
+        pair<l_vel_key, int16_t>,
+        pair<r_vel_key, int16_t>,
+
+        pair<battery, uint8_t>,
+        pair<stall_and_bumpers, uint16_t>,
+        pair<control, int16_t>,
+        pair<flags, uint16_t>,
+        pair<compass, uint8_t>,
+
+        pair<sonar_measurements, package_creation::repeat<uint16_t, uint8_t>>,
+
+        pair<timer, uint16_t>,
+        pair<analog, uint8_t>,
+        pair<digin, uint8_t>,
+        pair<digout, uint8_t>
     >;
 }
 
