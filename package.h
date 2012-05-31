@@ -7,6 +7,7 @@
 #include <set>
 #include <map>
 #include <array>
+#include <exception>
 
 #include "metaprogramming/serialization.h"
 #include "metaprogramming/select.h"
@@ -30,6 +31,11 @@ namespace robot { namespace package_creation
 
     namespace serialization
     {
+        struct constant_mismatch_error: public std::logic_error
+        {
+            constant_mismatch_error(): std::logic_error("parser error: const package field mismatch") {}
+        };
+
         template <typename T0, typename T1>
         using pair = metaprogramming::pair<T0, T1>;
 
@@ -239,7 +245,10 @@ namespace robot { namespace package_creation
 
             static void deserialize(const uint8_t *dst, FArgs&... args)
             {
-                //head::deserialize(dst, U); TODO add check
+                F c;
+                head::deserialize(dst, c);
+                if(c != U)
+                    throw constant_mismatch_error();
                 tail::deserialize(dst + head::size(U), args...);
             }
 
@@ -376,6 +385,10 @@ namespace robot { namespace package_creation
                 template <typename T, T C>
                 void operator() (const std::integral_constant<T, C>& t)
                 {
+                    T c;
+                    serialization::serialize_tmp_wrapper<T>::deserialize(ptr, c);
+                    if(c != C)
+                        throw constant_mismatch_error();
                     this->operator()(C);
                 }
 
@@ -389,7 +402,6 @@ namespace robot { namespace package_creation
                 template <typename T>
                 void operator() (const T& t)
                 {
-                    // TODO check
                     ptr += serialization::size_c_tmp_wrapper<T>::size(t);
                 }
 
