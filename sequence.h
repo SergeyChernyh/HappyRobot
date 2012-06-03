@@ -1,6 +1,8 @@
 #ifndef __CONTAINER__
 #define __CONTAINER__
 
+#include <iostream>
+
 #include "metaprogramming/element_access.h"
 #include "metaprogramming/type_traits.h"
 
@@ -223,6 +225,20 @@ namespace algorithm
     {
         template <typename S>
         static m::value_type<T> get(const S& s) { return m::value_type<T>(); }
+    };
+
+    template <typename T, T C>
+    struct for_each_argument<true, std::integral_constant<T, C>>
+    {
+        template <typename S>
+        static std::integral_constant<T, C> get(const S& s) { return std::integral_constant<T, C>(); }
+    };
+
+    template <typename Key, typename T>
+    struct for_each_argument<true, m::pair<Key, T>>
+    {
+        template <typename S>
+        static T get(const S& s) { return T(); }
     };
 
     template <typename T>
