@@ -1,6 +1,8 @@
 #ifndef __PACKAGE__
 #define __PACKAGE__
 
+#include <iostream>
+#include <memory>
 #include <numeric>
 #include <vector>
 #include <list>
@@ -193,16 +195,77 @@ namespace robot { namespace package_creation
         {};
 
         template <typename ...>
-        class serializer;
+        class serialize_element;
 
         template <typename ...>
-        class serialize_element;
+        class serializer;
 
         template <typename T, typename ...Tail>
         class serialize_element<T, pattern<Tail...>>:
             protected size_c_tmp_wrapper<T>,
             protected serialize_tmp_wrapper<T>
         {};
+
+        struct virtual_serializer
+        {
+            virtual void serialize(uint8_t *pos) const = 0;
+            virtual void deserialize(const uint8_t *pos) = 0;
+            virtual size_t size_c() const  = 0;
+
+            virtual ~virtual_serializer() {};
+        };
+
+        template <typename T>
+        class serialize_wrapper: public virtual_serializer
+        {
+            T& val;
+
+        public:
+            serialize_wrapper(T& t): val(t) {}
+
+            void serialize(uint8_t *pos) const   { serialize_tmp_wrapper<T>::serialize(pos, val); }
+            void deserialize(const uint8_t *pos) { serialize_tmp_wrapper<T>::deserialize(pos, val); }
+
+            size_t size_c() const { return size_c_tmp_wrapper<T>::size(val); }
+        };
+
+        class any
+        {
+            std::shared_ptr<virtual_serializer> v;
+        public:
+            template <typename T>
+            any(T& t): v(new serialize_wrapper<T>(t)) {}
+
+            void serialize(uint8_t *pos) const   { v->serialize(pos); }
+            void deserialize(const uint8_t *pos) { v->deserialize(pos); }
+
+            size_t size_c() const { return v->size_c(); }
+        };
+
+        template <>
+        class size_c_tmp<false, any>
+        {
+        public:
+            static size_t size(const any& t)
+            {
+                return t.size_c();
+            }
+        };
+
+        template <>
+        class serialize_tmp<false, any>
+        {
+        public:
+            static void serialize(uint8_t *pos, const any& t)
+            {
+                t.serialize(pos);
+            }
+
+            static void deserialize(const uint8_t *pos, any& t)
+            {
+                t.deserialize(pos);
+            }
+        };
 
         template <>
         class serializer<pattern<>, pattern<>>

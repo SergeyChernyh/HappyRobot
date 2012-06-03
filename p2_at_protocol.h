@@ -120,7 +120,8 @@ namespace robot { namespace p2_at
         pair< int16_t,    constant<uint8_t, 0x3B>>,
         pair<std::string, constant<uint8_t, 0x2B>>,
 
-        pair<std::vector<int16_t>, constant<uint8_t, 0x3B>> // TODO DELETE
+        pair<std::vector<int16_t>, constant<uint8_t, 0x3B>>, // TODO DELETE
+        pair<std::vector<package_creation::serialization::any>, constant<uint8_t, 0x3B>> // TODO DELETE
     >;
 
     struct arg_key;
