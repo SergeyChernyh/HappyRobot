@@ -56,10 +56,10 @@ void send_vec_cmd(int16_t p, Interface& i)
 {
     using namespace p2_at;
 
-    using cmd = command<n, std::vector<int16_t>>;
+    using cmd = command<n, std::vector<package_creation::serialization::any>>;
     using msg = message<cmd>;
 
-    std::vector<int16_t> vec(1, p);
+    std::vector<package_creation::serialization::any> vec(1, package_creation::serialization::any(p));
 
     auto cmd_ = package<cmd>(vec);
 
@@ -71,11 +71,11 @@ void send_vec_cmd(int16_t p, Interface& i)
 
     auto m = package<msg>(x);//cmd_.data_size() + package_creation::size<chck_sum_t<cmd>>::value, vec, chck_sum_calc<cmd>(cmd_));
 
-    sequence_access::at_key<arg_key>(sequence_access::at_key<message_body_key>(x))[0] = 333;
+    //sequence_access::at_key<arg_key>(sequence_access::at_key<message_body_key>(x))[0] = 333;
 
     robot::package_creation::serialization::serialize_tmp_wrapper<msg>::deserialize(m.get_data(), x);
 
-    std::cout << "========> " << sequence_access::at_c<2>(sequence_access::at_key<message_body_key>(x))[0] << std::endl;
+    //std::cout << "========> " << sequence_access::at_c<2>(sequence_access::at_key<message_body_key>(x))[0] << std::endl;
 
     i.write((const char*)(m.get_data()), m.data_size()); //TODO
 }
@@ -124,7 +124,6 @@ int main(int argc, const char* argv[])
             std::cout << a::at_key<p2_at::sonar_number>(sonars[i]) << ") " << a::at_key<p2_at::sonar_range>(sonars[i]) << std::endl;
 
         send_cmd<0>(tcp);
-        //robot::delay(1000);
     }
 
     return 0;
