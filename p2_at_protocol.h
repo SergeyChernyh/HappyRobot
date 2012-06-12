@@ -135,15 +135,6 @@ namespace robot { namespace p2_at
         pair<arg_key, arg>
     >;
 
-    //////////// Echo /////////////////////////////////////
-
-    template <uint8_t cmd_num>
-    using echo =
-    sequence
-    <
-        constant<uint8_t, cmd_num>
-    >;
-
     //////////// Sip //////////////////////////////////////
 
     struct status_key;
