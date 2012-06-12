@@ -4,55 +4,155 @@
 #include <math.h>
 #include <stdint.h>
 
-#include "metaprogramming/data_types.h"
+#include <type_traits> 
+
+#include "metaprogramming/concatination.h"
 
 namespace robot { namespace dimension
 {
-    template <int64_t Pow>
-    struct decimical_factor
+    namespace dimension_expr
     {
-        static constexpr auto value = pow(10, Pow);
-    };
+        namespace m = metaprogramming;
 
-    template <typename Quantity, typename Unit, typename Factor> struct dimension;
+        template <typename, int>
+        struct token;
 
-    template <typename R, typename S>
-    struct unit_cast;
+        template <typename ...>
+        struct add_to_expr_;
 
+        template <typename T, typename S>
+        using add_to_expr = typename add_to_expr_<T, S>::type;
 
-struct size;
-struct metre;
-struct inch;
+        template <typename T, int POW, typename Head, typename ...Args>
+        struct add_to_expr_<token<T, POW>, m::sequence<Head, Args...>>
+        {
+            using type = m::concatinate<m::sequence<Head>, add_to_expr<token<T, POW>, m::sequence<Args...>>>;
+        };
 
-    template <>
-    struct unit_cast<dimension<size, metre, decimical_factor<-2>>, dimension<size, inch, decimical_factor<0>>>
-    {
+        template <typename T, int POW0, int POW1, typename ...Args>
+        struct add_to_expr_<token<T, POW0>, m::sequence<token<T, POW1>, Args...>>
+        {
+            using type = m::sequence<token<T, POW0 + POW1>, Args...>;
+        };
+
+        template <typename T, int POW0, typename ...Args>
+        struct add_to_expr_<token<T, POW0>, m::sequence<token<T, -POW0>, Args...>>
+        {
+            using type = m::sequence<Args...>;
+        };
+
+        template <typename T, int POW>
+        struct add_to_expr_<token<T, POW>, m::sequence<>>
+        {
+            using type = m::sequence<token<T, POW>>;
+        };
+
+        template <typename ...>
+        struct expr_;
+
+        template <typename ...Args>
+        using expr = typename expr_<Args...>::type; 
+
+        template <>
+        struct expr_<>
+        {
+            using type = m::sequence<>;
+        };
+
+        template <typename T, typename ...Args>
+        struct expr_<T, Args...>
+        {
+            using type = add_to_expr<token<T, 1>, expr<Args...>>;
+        };
+
+        template <typename T, int POW, typename ...Args>
+        struct expr_<token<T, POW>, Args...>
+        {
+            using type = add_to_expr<token<T, POW>, expr<Args...>>;
+        };
+
+        template <typename ...Subexpr, typename ...Args>
+        struct expr_<m::sequence<Subexpr...>, Args...>: public expr_<Subexpr..., Args...> {};
+
+        template <typename, int>
+        struct pow_;
+
+        template <typename T, int POW>
+        using pow = typename pow_<T, POW>::type;
+
+        template <typename T, int POW>
+        struct pow_
+        {
+            using type = token<T, POW>;
+        };
+
+        template <typename T, int POW0, int POW1>
+        struct pow_<token<T, POW0>, POW1>
+        {
+            using type = token<T, POW0 * POW1>;
+        };
+
+        template <typename ...Args, int POW>
+        struct pow_<m::sequence<Args...>, POW>
+        {
+            using type = m::sequence<pow<Args, POW>...>;
+        };
+
+        template <typename, typename>
+        struct comprasion_;
+
         template <typename T0, typename T1>
-        static T0 cast(const T1& t) { return t * 0.0254 / decimical_factor<-2>::value * decimical_factor<0>::value; }
-    };
+        using comprasion = typename comprasion_<T0, T1>::type;
 
-    template <>
-    struct unit_cast<double, double>
-    {
+        template <typename ...Args0, typename ...Args1>
+        struct comprasion_<m::sequence<Args0...>, m::sequence<Args1...>>
+        {
+            using type = expr<m::sequence<Args0...>, pow<m::sequence<Args1...>, -1>>;
+        };
+
+        template <typename T>
+        struct is_equal_check_
+        {
+            using type = std::false_type;
+        };
+
+        template <>
+        struct is_equal_check_<m::sequence<>>
+        {
+            using type = std::true_type;
+        };
+
+        template <typename T>
+        using is_equal_check = typename is_equal_check_<T>::type;
+
         template <typename T0, typename T1>
-        static T0 cast(const T1& t) { return t * 0.0254 / decimical_factor<-2>::value * decimical_factor<0>::value; }
-    };
+        struct is_equal_
+        {
+            using type = is_equal_check<comprasion<T0, T1>>;
+        };
+
+        template <typename T0, typename T1>
+        using is_equal = typename is_equal_<T0, T1>::type;
+    }
+    
+    template <typename T, int POW>
+    using power = dimension_expr::pow<T, POW>;
+
+    template <typename ...Args>
+    using expr = dimension_expr::expr<Args...>;
+ 
+    template <typename T0, typename T1>
+    using is_equal = dimension_expr::is_equal<expr<T0>, expr<T1>>;
 
     template <typename, typename>
-    class phis_value;
+    struct unit_cast;
 
     template <typename ValueType, typename Quantity, typename Unit, typename Factor>
-    class phis_value<ValueType, dimension<Quantity, Unit, Factor>>
+    class phis_value
     {
         ValueType value;
 
-        using self_unit = dimension<Quantity, Unit, Factor>;
-
-        template <typename U, typename F>
-        using src_unit = dimension<Quantity, U, F>;
-
-        template <typename U, typename F>
-        using cast_t = unit_cast<self_unit, src_unit<U, F>>;
+        using self_t = phis_value<ValueType, Quantity, Unit, Factor>;
 
     public:
         phis_value() {}
@@ -67,20 +167,31 @@ struct inch;
             return *this;
         }
 
-        template <typename T, typename F>
-        phis_value& operator=(const phis_value<T, dimension<Quantity, Unit, F>>& p)
+        template <typename T, typename Q, typename U, typename F>
+        phis_value& operator=(const phis_value<T, Q, U, F>& p)
         {
-            value = p.get() * F::value / Factor::value;
+            static_assert(is_equal<Quantity, Q>::value, "phis value assignment error: quontity mismatch");
+            value = unit_cast<self_t, phis_value<T, Q, U, F>>::cast(p.get());
             return *this;
         }
+    };
 
-        template <typename T, typename U, typename F>
-        phis_value& operator=(const phis_value<T, dimension<Quantity, U, F>>& p)
-        {
-            value = cast_t<U, F>::cast<int>(p.get());
-            return *this;
-        }
+    template <typename Q, typename U, typename T0, typename T1, typename F0, typename F1>
+    struct unit_cast<phis_value<T0, Q, U, F0>, phis_value<T1, Q, U, F1>>
+    {
+        static T0 cast(const T1& t) { return t * F1::value / F0::value; }
+    };
 
+    template <typename Q0, typename Q1, typename U0, typename U1, typename T0, typename T1, typename F0, typename F1>
+    struct unit_cast<phis_value<T0, Q0, U0, F0>, phis_value<T1, Q1, U1, F1>>
+    {
+        static_assert(is_equal<Q0, Q1>::value, "phis value assignment error: quontity mismatch");
+    };
+
+    template <int64_t Pow>
+    struct decimical_factor
+    {
+        static constexpr auto value = pow(10, Pow);
     };
 }}
 
