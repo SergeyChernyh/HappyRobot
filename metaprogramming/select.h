@@ -1,6 +1,7 @@
 #ifndef __METAPROGRAMMING_SELECT__
 #define __METAPROGRAMMING_SELECT__
 
+#include "element_access.h"
 #include "concatination.h"
 
 namespace robot { namespace metaprogramming
