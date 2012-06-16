@@ -1,5 +1,4 @@
-Компиллятор - gcc 4.7 (mingw 4.7 для Windows)
+gcc 4.7 (mingw 4.7)
 
-Сборка под Windows: g++ -Wall -Werror -std=gnu++11 -I. -D__WINDOWS__ tests/test_name.cpp -lws2_32
-
-Сборка под Linux: g++-4.7 -Wall -Werror -std=gnu++11 -I. sests/test_name.cpp
+Windows: g++     -Wall -Werror -std=gnu++11 -I. -D__WINDOWS__ tests/test_name.cpp -lws2_32
+Linux:   g++-4.7 -Wall -Werror -std=gnu++11 -I.               tests/test_name.cpp
