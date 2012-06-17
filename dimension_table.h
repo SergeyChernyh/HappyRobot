@@ -6,7 +6,7 @@
 
 #include <type_traits> 
 
-#include "metaprogramming/concatination.h"
+#include "metaprogramming/select.h"
 
 namespace robot { namespace dimension
 {
@@ -144,48 +144,111 @@ namespace robot { namespace dimension
     template <typename T0, typename T1>
     using is_equal = dimension_expr::is_equal<expr<T0>, expr<T1>>;
 
-    template <typename, typename>
+    template <typename R, typename U0, typename U1>
     struct unit_cast;
 
+    template <typename R, typename U>
+    struct unit_cast<R, U, U>
+    {
+        template <typename T>
+        static R cast(const T& t) { return t; }
+    };
+
+    template <typename, typename, typename>
+    struct dimension;
+
+    template <typename R, typename U0, typename U1>
+    struct dimension_cast;
+
+    template <typename R, typename Q, typename U0, typename U1, typename F0, typename F1>
+    struct dimension_cast<R, dimension<Q, U0, F0>, dimension<Q, U1, F1>>
+    {
+        template <typename T>
+        static R cast(const T& t) { return unit_cast<R, U0, U1>::cast(t) * F0::value / F1::value; }
+    };
+
+    template <typename, typename, typename>
+    struct phis_value_;
+
     template <typename ValueType, typename Quantity, typename Unit, typename Factor>
-    class phis_value
+    using phis_value = phis_value_<ValueType, Quantity, dimension<Quantity, Unit, Factor>>;
+
+    template <typename ValueType, typename Quantity, typename Dimension>
+    class phis_value_
     {
         ValueType value;
 
-        using self_t = phis_value<ValueType, Quantity, Unit, Factor>;
+        using self_t = phis_value_<ValueType, Quantity, Dimension>;
+
+        template <typename V, typename Q, typename D>
+        class convertor
+        {
+            template <typename>
+            struct quantity_;
+
+            template <typename Q0, typename U0, typename F0>
+            struct quantity_<dimension<Q0, U0, F0>>
+            {
+                using type = Q0;
+            };
+
+            template <typename T, int C>
+            struct quantity_<dimension_expr::token<T, C>>: public quantity_<T> {};
+
+            template <typename T>
+            using quantity = typename quantity_<T>::type;
+
+            template <typename T, typename Seq0, typename Seq1>
+            struct separator
+            {
+                template <typename A>
+                using equal = std::integral_constant<bool, std::is_same<quantity<T>, quantity<A>>::value>;
+
+                template <typename A>
+                using not_equal = std::integral_constant<bool, !std::is_same<quantity<T>, quantity<A>>::value>;
+
+                using convertion_seq_pair =
+                metaprogramming::sequence
+                <
+                    metaprogramming::select<equal, Seq0>,
+                    metaprogramming::select<equal, Seq1>
+                >;
+
+                using convertion_tail =
+                metaprogramming::sequence
+                <
+                    metaprogramming::select<not_equal, Seq0>,
+                    metaprogramming::select<not_equal, Seq1>
+                >;
+            };
+
+            template <typename, typename, typename>
+            struct convertion_table;
+
+        public:
+        };
 
     public:
-        phis_value() {}
-        phis_value(const ValueType& v): value(v) {}
+        phis_value_() {}
+        phis_value_(const ValueType& v): value(v) {}
 
         void set(const ValueType& v) { value = v; }
         ValueType get() const { return value; }
 
-        phis_value& operator=(const phis_value& p)
+        phis_value_& operator=(const phis_value_& p)
         {
             value = p.value;
             return *this;
         }
 
-        template <typename T, typename Q, typename U, typename F>
-        phis_value& operator=(const phis_value<T, Q, U, F>& p)
+        template <typename V, typename Q, typename D>
+        phis_value_& operator=(const phis_value_<V, Q, D>& p)
         {
             static_assert(is_equal<Quantity, Q>::value, "phis value assignment error: quontity mismatch");
-            value = unit_cast<self_t, phis_value<T, Q, U, F>>::cast(p.get());
+            using cast = convertor<V, Q, D>;
+            value = dimension_cast<ValueType, D, Dimension>::cast(p.get());
             return *this;
         }
-    };
-
-    template <typename Q, typename U, typename T0, typename T1, typename F0, typename F1>
-    struct unit_cast<phis_value<T0, Q, U, F0>, phis_value<T1, Q, U, F1>>
-    {
-        static T0 cast(const T1& t) { return t * F1::value / F0::value; }
-    };
-
-    template <typename Q0, typename Q1, typename U0, typename U1, typename T0, typename T1, typename F0, typename F1>
-    struct unit_cast<phis_value<T0, Q0, U0, F0>, phis_value<T1, Q1, U1, F1>>
-    {
-        static_assert(is_equal<Q0, Q1>::value, "phis value assignment error: quontity mismatch");
     };
 
     template <int64_t Pow>

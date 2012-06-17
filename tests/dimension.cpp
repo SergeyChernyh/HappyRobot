@@ -30,19 +30,20 @@ struct test1
 
 namespace robot { namespace dimension
 {
-    template <typename T0, typename T1, typename F0, typename F1>
-    struct unit_cast<phis_value<T0, size, metre, F0>, phis_value<T1, size, inch, F1>>
+    template <typename R>
+    struct unit_cast<R, inch, metre>
     {
-        static T0 cast(const T1& t) { return t * 0.0254 / F0::value * F1::value; }
+        template <typename T>
+        static R cast(const T& t) { return t * 0.0254; }
     };
 }}
 
 int main()
 {
-    using pmeter_t = phis_value<double, size, metre, decimical_factor<0>>;
+    using pmeter_t =      phis_value<double, size, metre, decimical_factor<0>>;
     using psantimeter_t = phis_value<double, size, metre, decimical_factor<-2>>;
 
-    using pinch_t = phis_value<double, size, inch, decimical_factor<0>>;
+    using pinch_t =       phis_value<double, size, inch, decimical_factor<0>>;
 
     pmeter_t p3_0;
     pmeter_t p3_1(12);
