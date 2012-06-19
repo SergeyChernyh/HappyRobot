@@ -17,62 +17,62 @@ namespace robot { namespace dimension
         template <typename, int>
         struct token;
 
-        template <typename ...>
+        template <bool add_to_tail, typename ...>
         struct add_to_expr_;
 
-        template <typename T, typename S>
-        using add_to_expr = typename add_to_expr_<T, S>::type;
+        template <bool add_to_tail, typename T, typename S>
+        using add_to_expr = typename add_to_expr_<add_to_tail, T, S>::type;
 
-        template <typename T, int POW, typename Head, typename ...Args>
-        struct add_to_expr_<token<T, POW>, m::sequence<Head, Args...>>
+        template <bool add_to_tail, typename T, int POW, typename Head, typename ...Args>
+        struct add_to_expr_<add_to_tail, token<T, POW>, m::sequence<Head, Args...>>
         {
-            using type = m::concatinate<m::sequence<Head>, add_to_expr<token<T, POW>, m::sequence<Args...>>>;
+            using type = m::concatinate<m::sequence<Head>, add_to_expr<add_to_tail, token<T, POW>, m::sequence<Args...>>>;
         };
 
-        template <typename T, int POW0, int POW1, typename ...Args>
-        struct add_to_expr_<token<T, POW0>, m::sequence<token<T, POW1>, Args...>>
+        template <bool add_to_tail, typename T, int POW0, int POW1, typename ...Args>
+        struct add_to_expr_<add_to_tail, token<T, POW0>, m::sequence<token<T, POW1>, Args...>>
         {
             using type = m::sequence<token<T, POW0 + POW1>, Args...>;
         };
 
-        template <typename T, int POW0, typename ...Args>
-        struct add_to_expr_<token<T, POW0>, m::sequence<token<T, -POW0>, Args...>>
+        template <bool add_to_tail, typename T, int POW0, typename ...Args>
+        struct add_to_expr_<add_to_tail, token<T, POW0>, m::sequence<token<T, -POW0>, Args...>>
         {
             using type = m::sequence<Args...>;
         };
 
         template <typename T, int POW>
-        struct add_to_expr_<token<T, POW>, m::sequence<>>
+        struct add_to_expr_<true, token<T, POW>, m::sequence<>>
         {
             using type = m::sequence<token<T, POW>>;
         };
 
-        template <typename ...>
+        template <bool, typename ...>
         struct expr_;
 
         template <typename ...Args>
-        using expr = typename expr_<Args...>::type; 
+        using expr = typename expr_<true, Args...>::type; 
 
         template <>
-        struct expr_<>
+        struct expr_<true>
         {
             using type = m::sequence<>;
         };
 
-        template <typename T, typename ...Args>
-        struct expr_<T, Args...>
+        template <bool add_to_tail, typename T, typename ...Args>
+        struct expr_<add_to_tail, T, Args...>
         {
-            using type = add_to_expr<token<T, 1>, expr<Args...>>;
+            using type = add_to_expr<add_to_tail, token<T, 1>, expr<Args...>>;
         };
 
-        template <typename T, int POW, typename ...Args>
-        struct expr_<token<T, POW>, Args...>
+        template <bool add_to_tail, typename T, int POW, typename ...Args>
+        struct expr_<add_to_tail, token<T, POW>, Args...>
         {
-            using type = add_to_expr<token<T, POW>, expr<Args...>>;
+            using type = add_to_expr<add_to_tail, token<T, POW>, expr<Args...>>;
         };
 
-        template <typename ...Subexpr, typename ...Args>
-        struct expr_<m::sequence<Subexpr...>, Args...>: public expr_<Subexpr..., Args...> {};
+        template <bool add_to_tail, typename ...Subexpr, typename ...Args>
+        struct expr_<add_to_tail, m::sequence<Subexpr...>, Args...>: public expr_<add_to_tail, Subexpr..., Args...> {};
 
         template <typename, int>
         struct pow_;
@@ -183,6 +183,7 @@ namespace robot { namespace dimension
         template <typename V, typename Q, typename D>
         class convertor
         {
+        public:
             template <typename>
             struct quantity_;
 
@@ -224,8 +225,6 @@ namespace robot { namespace dimension
 
             template <typename, typename, typename>
             struct convertion_table;
-
-        public:
         };
 
     public:
