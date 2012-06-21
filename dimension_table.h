@@ -47,32 +47,38 @@ namespace robot { namespace dimension
             using type = m::sequence<token<T, POW>>;
         };
 
-        template <bool, typename ...>
-        struct expr_;
-
-        template <typename ...Args>
-        using expr = typename expr_<true, Args...>::type; 
-
-        template <>
-        struct expr_<true>
+        template <typename T, int POW>
+        struct add_to_expr_<false, token<T, POW>, m::sequence<>>
         {
             using type = m::sequence<>;
         };
 
-        template <bool add_to_tail, typename T, typename ...Args>
-        struct expr_<add_to_tail, T, Args...>
+        template <typename ...>
+        struct expr_;
+
+        template <typename ...Args>
+        using expr = typename expr_<Args...>::type;
+
+        template <>
+        struct expr_<>
         {
-            using type = add_to_expr<add_to_tail, token<T, 1>, expr<Args...>>;
+            using type = m::sequence<>;
         };
 
-        template <bool add_to_tail, typename T, int POW, typename ...Args>
-        struct expr_<add_to_tail, token<T, POW>, Args...>
+        template <typename T, typename ...Args>
+        struct expr_<T, Args...>
         {
-            using type = add_to_expr<add_to_tail, token<T, POW>, expr<Args...>>;
+            using type = add_to_expr<true, token<T, 1>, expr<Args...>>;
         };
 
-        template <bool add_to_tail, typename ...Subexpr, typename ...Args>
-        struct expr_<add_to_tail, m::sequence<Subexpr...>, Args...>: public expr_<add_to_tail, Subexpr..., Args...> {};
+        template <typename T, int POW, typename ...Args>
+        struct expr_<token<T, POW>, Args...>
+        {
+            using type = add_to_expr<true, token<T, POW>, expr<Args...>>;
+        };
+
+        template <typename ...Subexpr, typename ...Args>
+        struct expr_<m::sequence<Subexpr...>, Args...>: public expr_<Subexpr..., Args...> {};
 
         template <typename, int>
         struct pow_;
@@ -133,6 +139,30 @@ namespace robot { namespace dimension
 
         template <typename T0, typename T1>
         using is_equal = typename is_equal_<T0, T1>::type;
+
+        template <typename ...>
+        struct delete_repeats_;
+
+        template <typename ...Args>
+        using delete_repeats = typename delete_repeats_<Args...>::type;
+
+        template <typename T, typename S>
+        struct delete_repeats_<T, S>
+        {
+            using type = add_to_expr<false, pow<T, -1>, S>;
+        };
+
+        template <typename Head, typename ...Subexpr, typename S>
+        struct delete_repeats_<m::sequence<Head, Subexpr...>, S>
+        {
+            using type = add_to_expr<false, pow<Head, -1>, delete_repeats<m::sequence<Subexpr...>, S>>;
+        };
+
+        template <typename S>
+        struct delete_repeats_<m::sequence<>, S>
+        {
+            using type = S;
+        };
     }
     
     template <typename T, int POW>

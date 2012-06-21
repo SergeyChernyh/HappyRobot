@@ -23,9 +23,12 @@ struct test1
     using f_t = expr<power<size, 2>, expr<power<expr<time>, 3>>, size>;
     using s_t = power<expr<time, size>, 3>;
 
+    using t_t = expr<power<expr<time, size>, 3>, long>;
+
     using e_t = is_equal<f_t, s_t>;
 
     static_assert(e_t::value, "error1");
+    static_assert(is_equal<dimension_expr::delete_repeats<s_t, t_t>, long>::value, "error2");
 };
 
 namespace robot { namespace dimension
