@@ -14,6 +14,7 @@ struct time;
 struct size;
 struct metre;
 struct inch;
+struct seconds;
 
 template <typename, typename> struct is_same { static constexpr bool s = false; };
 template <typename T> struct is_same <T, T> { static constexpr bool s = true; };
@@ -23,12 +24,30 @@ struct test1
     using f_t = expr<power<size, 2>, expr<power<expr<time>, 3>>, size>;
     using s_t = power<expr<time, size>, 3>;
 
-    using t_t = expr<power<expr<time, size>, 3>, long>;
+    using t_t = expr<power<expr<time, size>, 4>, long>;
 
     using e_t = is_equal<f_t, s_t>;
 
     static_assert(e_t::value, "error1");
-    static_assert(is_equal<dimension_expr::delete_repeats<s_t, t_t>, long>::value, "error2");
+    static_assert(is_equal<dimension_expr::delete_repeats<s_t, t_t>, expr<time, size, long>>::value, "error2");
+
+    using
+    metre_inch_millimetre = 
+    expr
+    <
+        dimension<size, metre, decimical_factor<0>>,
+        dimension<size, inch , decimical_factor<0>>,
+        dimension<size, metre, decimical_factor<-3>>
+    >;
+
+    using
+    metre_ =
+    expr
+    <
+        dimension<size, metre, decimical_factor<0>>
+    >;
+
+    //using cast = cast_details::pos_cast_sequence<double, power<metre_, 3>, metre_inch_millimetre>;
 };
 
 namespace robot { namespace dimension
