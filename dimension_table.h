@@ -8,7 +8,7 @@
 
 #include "metaprogramming/select.h"
 
-namespace robot { namespace dimension
+namespace robot { namespace dim
 {
     namespace dimension_expr
     {
@@ -193,20 +193,152 @@ namespace robot { namespace dimension
     template <typename, typename, typename>
     struct dimension;
 
-    template <typename R, typename U0, typename U1>
-    struct dimension_cast;
-
-    template <typename R, typename Q, typename U0, typename U1, typename F0, typename F1>
-    struct dimension_cast<R, dimension<Q, U0, F0>, dimension<Q, U1, F1>>
-    {
-        template <typename T>
-        static R cast(const T& t) { return unit_cast<R, U0, U1>::cast(t) * F0::value / F1::value; }
-    };
-
     namespace cast_details
     {
         namespace m = metaprogramming;
 
+        template <typename R, typename U0, typename U1>
+        struct dimension_cast;
+
+        template <typename R, typename Q, typename U0, typename U1, typename F0, typename F1>
+        struct dimension_cast<R, dimension<Q, U0, F0>, dimension<Q, U1, F1>>
+        {
+            template <typename T>
+            static R cast(const T& t) { return unit_cast<R, U0, U1>::cast(t) * F0::value / F1::value; }
+        };
+
+        template <typename R, typename U0, typename U1>
+        struct reverse_cast
+        {
+            template <typename T>
+            static R cast(const T& t) { return 1 / dimension_cast<R, U0, U1>::cast(1 / t); }
+        };
+
+        template <typename R, typename T0, typename T1, int C, bool SIGN>
+        struct repeat_cast_;
+
+        template <typename R, typename T0, typename T1, int C>
+        using repeat_cast = typename repeat_cast_<R, T0, T1, C, (C > 0)>::type;
+
+        template <typename R, typename T0, typename T1, int C>
+        struct repeat_cast_<R, T0, T1, C, 1>
+        {
+            template <typename T>
+            static R cast(const T& t)
+            {
+                return repeat_cast_<R, T0, T1, C - 1, 1>::cast(dimension_cast<R, T0, T1>::cast(t));
+            }
+        };
+
+        template <typename R, typename T0, typename T1>
+        struct repeat_cast_<R, T0, T1, 1, 1>
+        {
+            template <typename T>
+            static R cast(const T& t)
+            {
+                return dimension_cast<R, T0, T1>::cast(t);
+            }
+        };
+
+        template <typename R, typename T0, typename T1, int C>
+        struct repeat_cast_<R, T0, T1, C, 0>
+        {
+            template <typename T>
+            static R cast(const T& t)
+            {
+                return repeat_cast_<R, T0, T1, C + 1, 0>::cast(reverse_cast<R, T0, T1>::cast(t));
+            }
+        };
+
+        template <typename R, typename T0, typename T1>
+        struct repeat_cast_<R, T0, T1, -1, 0>
+        {
+            template <typename T>
+            static R cast(const T& t)
+            {
+                return reverse_cast<R, T0, T1>::cast(t);
+            }
+        };
+
+        template <typename, typename, typename>
+        struct token_cast_;
+
+        template <typename R, typename T0, typename T1, int C>
+        struct token_cast_<R, dimension_expr::token<T0, C>, dimension_expr::token<T1, C>>
+        {
+            template <typename T>
+            static R cast(const T& t)
+            {
+                return repeat_cast_<R, T0, T1, C, (C > 0)>::cast(t);
+            }
+
+            using first_tail = m::sequence<>;
+            using second_tail = m::sequence<>;
+        };
+
+        template <typename T, int C>
+        struct token_cast_tail_
+        {
+            using type = m::sequence<dimension_expr::token<T, C>>;
+        };
+
+        template <typename T>
+        struct token_cast_tail_<T, 0>
+        {
+            using type = m::sequence<>;
+        };
+
+        template <typename R, typename T0, typename T1, int C0, int C1>
+        struct token_cast_<R, dimension_expr::token<T0, C0>, dimension_expr::token<T1, C1>>
+        {
+            static_assert((C0 > 0 && C1 > 0) || (C0 < 0 && C1 < 0), "token_cast_ error: sign mismatch");
+
+            static constexpr int min() { return C0 > 0 ? C0 < C1 ? C0 : C1 : C0 < C1 ? C1 : C0; }
+
+            static constexpr int sub(int p) { return C0 > 0 ? p - min() : p + min(); }
+
+            template <typename T>
+            static R cast(const T& t)
+            {
+                return repeat_cast_<R, T0, T1, min(), (min() > 0)>::cast(t);
+            }
+
+            using first_tail  = typename token_cast_tail_<T0, sub(C0)>::type;
+            using second_tail = typename token_cast_tail_<T1, sub(C1)>::type;
+        };
+
+        template <typename, typename, typename>
+        struct sequence_cast;
+
+        template <typename R, typename T0, typename T1, typename ...Args0, typename ...Args1>
+        struct sequence_cast<R, m::sequence<T0, Args0...>, m::sequence<T1, Args1...>>
+        {
+            template <typename T>
+            static R cast(const T& t)
+            {
+                using t_cast = token_cast_<R, T0, T1>;
+                return t_cast::cast(t);
+                sequence_cast
+                <
+                    R,
+                    m::concatinate<typename t_cast::first_tail , m::sequence<Args0...>>,
+                    m::concatinate<typename t_cast::second_tail, m::sequence<Args1...>>
+                >::cast(t_cast::cast(t));
+            }
+        };
+
+        template <typename R>
+        struct sequence_cast<R, m::sequence<>, m::sequence<>>
+        {
+            template <typename T>
+            static R cast(const T& t)
+            {
+                return t;
+            }
+        };
+
+        //////////////////////////;
+        
         template <typename>
         struct quantity_;
 
@@ -231,11 +363,14 @@ namespace robot { namespace dimension
             static const bool value = (C > 0);
         };
 
-        template <typename T, typename Seq>
-        struct separator
+        template <typename, typename, typename>
+        struct full_cast;
+
+        template <typename R, typename Head, typename ...Args0, typename ...Args1>
+        struct full_cast<R, m::sequence<Head, Args0...>, m::sequence<Args1...>>
         {
             template <typename A>
-            using equal = std::integral_constant<bool, std::is_same<quantity<T>, quantity<A>>::value>;
+            using equal = std::integral_constant<bool, std::is_same<quantity<Head>, quantity<A>>::value>;
 
             template <typename A>
             using pos_equal = std::integral_constant<bool, equal<A>::value && pos_pow<A>::value>;
@@ -244,232 +379,55 @@ namespace robot { namespace dimension
             using neg_equal = std::integral_constant<bool, equal<A>::value && !pos_pow<A>::value>;
 
             template <typename A>
-            using not_equal = std::integral_constant<bool, !std::is_same<quantity<T>, quantity<A>>::value>;
+            using not_equal = std::integral_constant<bool, !std::is_same<quantity<Head>, quantity<A>>::value>;
 
-            using convertion_seq     = m::select<equal    , Seq>;
-            using pos_convertion_seq = m::select<pos_equal, Seq>;
-            using neg_convertion_seq = m::select<neg_equal, Seq>;
-            using convertion_tail    = m::select<not_equal, Seq>;
+            template <typename T>
+            static R cast(const T& t)
+            {
+                using seq0 = m::sequence<Head, Args0...>;
+                using seq1 = m::sequence<Args1...>;
+
+                using head_pos_0 = m::select<pos_equal, seq0>;
+                using head_pos_1 = m::select<pos_equal, seq1>;
+
+                using head_neg_0 = m::select<neg_equal, seq0>;
+                using head_neg_1 = m::select<neg_equal, seq1>;
+
+                using tail_0 = m::select<not_equal, seq0>;
+                using tail_1 = m::select<not_equal, seq1>;
+
+                using pos_cast = sequence_cast<R, head_pos_0, head_pos_1>;
+                using neg_cast = sequence_cast<R, head_neg_0, head_neg_1>;
+
+                return pos_cast::cast(neg_cast::cast(full_cast<R, tail_0, tail_1>::cast(t)));
+            }
         };
 
-        template <typename R, typename U0, typename U1>
-        struct reverse_cast
+        template <typename R>
+        struct full_cast<R, m::sequence<>, m::sequence<>>
         {
             template <typename T>
-            static R cast(const T& t) { return 1 / dimension_cast<R, U0, U1>::cast(1 / t); }
+            static R cast(const T& t)
+            {
+                return t;
+            }
         };
-
-        template <typename R, typename T0, typename T1, int C, bool SIGN>
-        struct repeat_cast_;
-
-        template <typename R, typename T0, typename T1, int C>
-        using repeat_cast = typename repeat_cast_<R, T0, T1, C, (C > 0)>::type;
-
-        template <typename R, typename T0, typename T1, int C>
-        struct repeat_cast_<R, T0, T1, C, 1>
-        {
-            using type =
-            m::concatinate
-            <
-                m::sequence<dimension_cast<R, T0, T1>>,
-                repeat_cast<R, T0, T1, C - 1>
-            >;
-        };
-
-        template <typename R, typename T0, typename T1, int C>
-        struct repeat_cast_<R, T0, T1, C, 0>
-        {
-            using type =
-            m::concatinate
-            <
-                m::sequence<reverse_cast<R, T0, T1>>,
-                repeat_cast<R, T0, T1, C + 1>
-            >;
-        };
-
-        template <typename R, typename T0, typename T1, bool SIGN>
-        struct repeat_cast_<R, T0, T1, 0, SIGN>
-        {
-            using type = m::sequence<>;
-        };
-
-        template <typename, typename, typename>
-        struct add_to_cast_sequence_        {
-            using type = m::sequence<>;//repeat_cast<V, T0, T1, C>;
-
-            using first_tail  = m::sequence<>;
-            using second_tail = m::sequence<>;
-        };;
-
-        template <typename V, typename T0, typename T1, int C>
-        struct add_to_cast_sequence_<V, dimension_expr::token<T0, C>, dimension_expr::token<T1, C>>
-        {
-            using type = repeat_cast<V, T0, T1, C>;
-
-            using first_tail  = m::sequence<>;
-            using second_tail = m::sequence<>;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C, unsigned P>
-        struct add_to_cast_sequence_<V, dimension_expr::token<T0, C>, dimension_expr::token<T1, C + P>>
-        {
-            using type = repeat_cast<V, T0, T1, C>;
-
-            using first_tail  = m::sequence<>;
-            using second_tail = m::sequence<dimension_expr::token<T1, P>>;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C, unsigned P>
-        struct add_to_cast_sequence_<V, dimension_expr::token<T0, C + P>, dimension_expr::token<T1, C>>
-        {
-            using type = repeat_cast<V, T0, T1, C>;
-
-            using first_tail  = m::sequence<dimension_expr::token<T1, P>>;
-            using second_tail = m::sequence<>;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C, unsigned P>
-        struct add_to_cast_sequence_<V, dimension_expr::token<T0, -C>, dimension_expr::token<T1, -C - P>>
-        {
-            using type = repeat_cast<V, T0, T1, -C>;
-
-            using first_tail  = m::sequence<>;
-            using second_tail = m::sequence<dimension_expr::token<T1, -P>>;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C, unsigned P>
-        struct add_to_cast_sequence_<V, dimension_expr::token<T0, -C - P>, dimension_expr::token<T1, -C>>
-        {
-            using type = repeat_cast<V, T0, T1, -C>;
-
-            using first_tail  = m::sequence<dimension_expr::token<T1, -P>>;
-            using second_tail = m::sequence<>;
-        };
-
-        template <typename, typename, typename>
-        struct pos_cast_sequence_;
-
-        template <typename V, typename S0, typename S1>
-        using pos_cast_sequence = typename pos_cast_sequence_<V, S0, S1>::type;
-        
-        template <typename V>
-        struct pos_cast_sequence_
-        <
-            V,
-            m::sequence<>,
-            m::sequence<>
-        >
-        {
-            using type = m::sequence<>;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C>
-        struct pos_cast_sequence_
-        <
-            V,
-            m::sequence<dimension_expr::token<T0, C>>,
-            m::sequence<dimension_expr::token<T1, C>>
-        >
-        {
-            using type = repeat_cast<V, T0, T1, C>;
-        };
-
-        template <typename V, typename T0, typename T1, typename ...Args0, typename ...Args1>
-        struct pos_cast_sequence_<V, m::sequence<T0, Args0...>, m::sequence<T1, Args1...>>
-        {
-            using type =
-            m::concatinate
-            <
-                typename add_to_cast_sequence_<V, T0, T1>::type,
-                pos_cast_sequence
-                <
-                    V,
-                    m::sequence<typename add_to_cast_sequence_<V, T0, T1>::first_tail, Args0...>,
-                    m::sequence<typename add_to_cast_sequence_<V, T0, T1>::second_tail, Args1...>
-                >
-            >;
-        };
-
-        /////////
-
-        template <typename, typename, typename>
-        struct neg_cast_sequence_;
-
-        template <typename V, typename S0, typename S1>
-        using neg_cast_sequence = typename neg_cast_sequence_<V, S0, S1>::type;
-
-        template <typename V>
-        struct neg_cast_sequence_
-        <
-            V,
-            m::sequence<>,
-            m::sequence<>
-        >
-        {
-            using type = m::sequence<>;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C>
-        struct neg_cast_sequence_
-        <
-            V,
-            m::sequence<dimension_expr::token<T0, -C>>,
-            m::sequence<dimension_expr::token<T1, -C>>
-        >
-        {
-            using type = repeat_cast<V, T0, T1, -C>;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C, unsigned P, typename ...Args0, typename ...Args1>
-        struct neg_cast_sequence_
-        <
-            V,
-            m::sequence<dimension_expr::token<T0, -C>, Args0...>,
-            m::sequence<dimension_expr::token<T1, -C - P>, Args1...>
-        >
-        {
-            using type =
-            m::concatinate
-            <
-                repeat_cast<V, T0, T1, -C>,
-                neg_cast_sequence
-                <
-                V,
-                m::sequence<Args0...>,
-                m::sequence<dimension_expr::token<T1, -P>, Args1...>
-                >
-            >;
-        };
-
-        template <typename V, typename T0, typename T1, unsigned C, unsigned P, typename ...Args0, typename ...Args1>
-        struct neg_cast_sequence_
-        <
-            V,
-            m::sequence<dimension_expr::token<T0, -C - P>, Args0...>,
-            m::sequence<dimension_expr::token<T1, -C>, Args1...>
-        >
-        {
-            using type =
-            m::concatinate
-            <
-                repeat_cast<V, T0, T1, -C>,
-                neg_cast_sequence
-                <
-                V,
-                m::sequence<dimension_expr::token<T1, -P>, Args0...>,
-                m::sequence<Args1...>
-                >
-            >;
-        };
-
-        //template <typename V, typename S0, typename S1>
-        //struct cast_sequence = m::concatinate<neg_cast_sequence>;
-        
-        //////////////////////////;
     }
 
     template <typename, typename, typename>
     struct phis_value_;
+
+    template <typename, typename>
+    struct ph_value_;
+
+    template <typename ValueType, typename Quantity, typename Unit, typename Factor>
+    struct ph_value_<ValueType, dimension<Quantity, Unit, Factor>>
+    {
+        using type = phis_value_<ValueType, Quantity, dimension<Quantity, Unit, Factor>>;
+    };
+
+    template <typename T0, typename T1>
+    using ph_value = typename ph_value_<T0, T1>::type;
 
     template <typename ValueType, typename Quantity, typename Unit, typename Factor>
     using phis_value = phis_value_<ValueType, Quantity, dimension<Quantity, Unit, Factor>>;
@@ -478,16 +436,6 @@ namespace robot { namespace dimension
     class phis_value_
     {
         ValueType value;
-
-        using self_t = phis_value_<ValueType, Quantity, Dimension>;
-
-        template <typename V, typename Q, typename D>
-        class convertor
-        {
-        public:
-
-
-        };
 
     public:
         phis_value_() {}
@@ -502,12 +450,18 @@ namespace robot { namespace dimension
             return *this;
         }
 
+        template <typename V>
+        phis_value_& operator=(const phis_value_<V, Quantity, Dimension>& p)
+        {
+            value = p.value;
+            return *this;
+        }
+
         template <typename V, typename Q, typename D>
         phis_value_& operator=(const phis_value_<V, Q, D>& p)
         {
             static_assert(is_equal<Quantity, Q>::value, "phis value assignment error: quontity mismatch");
-            using cast = convertor<V, Q, D>;
-            value = dimension_cast<ValueType, D, Dimension>::cast(p.get());
+            value = cast_details::full_cast<ValueType, expr<D>, expr<Dimension>>::cast(p.get());
             return *this;
         }
     };
@@ -518,5 +472,40 @@ namespace robot { namespace dimension
         static constexpr auto value = pow(10, Pow);
     };
 }}
+
+namespace robot {
+
+    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    inline
+    dim::phis_value_<decltype(V0() * V1()), dim::expr<Q0, Q1>, dim::expr<D0, D1>>
+    operator *(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    {
+        return dim::phis_value_<decltype(V0() * V1()), dim::expr<Q0, Q1>, dim::expr<D0, D1>>(p0.get() * p1.get());
+    }
+
+    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    inline
+    dim::phis_value_<decltype(V0() / V1()), dim::expr<Q0, dim::power<Q1, -1>>, dim::expr<D0,  dim::power<D1, -1>>>
+    operator /(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    {
+        return dim::phis_value_<decltype(V0() / V1()), dim::expr<Q0, dim::power<Q1, -1>>, dim::expr<D0,  dim::power<D1, -1>>>(p0.get() / p1.get());
+    }
+
+    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    inline
+    dim::phis_value_<decltype(V0() + V1()), Q0, D0>
+    operator +(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    {
+        return dim::phis_value_<decltype(V0() + V1()), Q0, D0>(p0.get() + p1.get());
+    }
+
+    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    inline
+    dim::phis_value_<decltype(V0() - V1()), Q0, D0>
+    operator -(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    {
+        return dim::phis_value_<decltype(V0() - V1()), Q0, D0>(p0.get() - p1.get());
+    }
+}
 
 #endif //__DIMENSION_TABLE__
