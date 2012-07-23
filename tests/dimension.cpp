@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "../dimension_table.h"
+#include "../phis_value.h"
 
 #include <iostream>
 
@@ -11,7 +11,7 @@ struct test0
     static_assert(10 == decimical_factor<1>::value, "error0");
 };
 
-struct time;
+struct time_t_;
 struct size;
 struct metre;
 struct inch;
@@ -23,15 +23,15 @@ template <typename T> struct is_same <T, T> { static constexpr bool s = true; };
 
 struct test1
 {
-    using f_t = expr<power<size, 2>, expr<power<expr<time>, 3>>, size>;
-    using s_t = power<expr<time, size>, 3>;
+    using f_t = expr<power<size, 2>, expr<power<expr<time_t_>, 3>>, size>;
+    using s_t = power<expr<time_t_, size>, 3>;
 
-    using t_t = expr<power<expr<time, size>, 4>, long>;
+    using t_t = expr<power<expr<time_t_, size>, 4>, long>;
 
     using e_t = is_equal<f_t, s_t>;
 
     static_assert(e_t::value, "error1");
-    static_assert(is_equal<dimension_expr::delete_repeats<s_t, t_t>, expr<time, size, long>>::value, "error2");
+    static_assert(is_equal<dimension_expr::delete_repeats<s_t, t_t>, expr<time_t_, size, long>>::value, "error2");
 };
 
 namespace robot { namespace dim
@@ -104,8 +104,8 @@ int main()
 
     ///////////////////////////////////////////
 
-    using dsecond_t = dimension<time, second, decimical_factor<0>>;
-    using dhour_t   = dimension<time, hour  , decimical_factor<0>>;
+    using dsecond_t = dimension<time_t_, second, decimical_factor<0>>;
+    using dhour_t   = dimension<time_t_, hour  , decimical_factor<0>>;
 
     using santimeter_per_seconds_2 = expr<dsantimeter_t, power<dsecond_t, -2>>;
     using          inch_per_hour_2 = expr<      dinch_t, power<dhour_t  , -2>>;
@@ -118,8 +118,8 @@ int main()
 
     std::cout << cast_acc::cast(2) << '\n';
 
-    using psecond_t     = phis_value<double, time, second, decimical_factor<0 >>;
-    using phour_t       = phis_value<double, time, hour  , decimical_factor<0 >>;
+    using psecond_t     = phis_value<double, time_t_, second, decimical_factor<0 >>;
+    using phour_t       = phis_value<double, time_t_, hour  , decimical_factor<0 >>;
     using psantimeter_t = phis_value<double, size, metre , decimical_factor<-2>>;
     using pinch_t       = phis_value<double, size, inch  , decimical_factor<0 >>;
 
@@ -128,7 +128,7 @@ int main()
 
     auto a = i / h / h;
 
-    phis_value_<double, expr<size, power<time, -2>>, expr<dsantimeter_t, power<dsecond_t, -2>>> b;
+    phis_value_<double, expr<size, power<time_t_, -2>>, expr<dsantimeter_t, power<dsecond_t, -2>>> b;
 
     b = a;
 
