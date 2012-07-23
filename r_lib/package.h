@@ -177,9 +177,10 @@ namespace robot { namespace package_creation
 
             static void deserialize(const uint8_t *pos, type& t)
             {
-                Size size;
-                serialize_tmp<true, Size>::deserialize(pos, size);
-                t.resize(size);
+                Size s;
+                serialize_tmp<true, Size>::deserialize(pos, s);
+                t.resize(s);
+                pos += size_c_tmp_wrapper<Size>::size(s);
                 serialize_tmp<false, std::vector<T>>::deserialize(pos, t);
             }
         };
