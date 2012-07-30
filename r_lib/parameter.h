@@ -30,7 +30,7 @@ namespace robot { namespace subsystem {
         }
     };
 
-    template <typename T, T max = std::numeric_limits<T>::max(), T min = std::numeric_limits<T>::min(), T step = 1>
+    template <typename T>
     class parameter
     {
         T value;
@@ -49,14 +49,15 @@ namespace robot { namespace subsystem {
             act.add(t);
         }
 
-        void set(const T& v)
+        template <typename A>
+        void set(const A& v)
         {
             std::lock_guard<std::mutex> lock(m);
             value = v;
-            act(v);
+            act(value);
         }
 
-        void get() const
+        T get() const
         {
             std::lock_guard<std::mutex> lock(m);
             return value;
