@@ -471,9 +471,45 @@ namespace robot { namespace dim
     {
         static constexpr auto value = pow(10, Pow);
     };
+
+    template <typename T, int64_t DecPow>
+    struct apply_factor_;
+
+    template <typename T, int64_t DecPow>
+    using apply_factor = typename apply_factor_<T, DecPow>::type;
+
+    template <int64_t DecPow0, int64_t DecPow1>
+    struct apply_factor_<dim::decimical_factor<DecPow0>, DecPow1>
+    {
+        using type = dim::decimical_factor<DecPow0 + DecPow1>;
+    };
+
+    template <typename Q, typename U, typename F, int64_t DecPow>
+    struct apply_factor_<dim::dimension<Q, U, F>, DecPow>
+    {
+        using type = dim::dimension<Q, U, apply_factor<F, DecPow>>;
+    };
+
+    template <typename V, typename Q, typename D, int64_t DecPow>
+    struct apply_factor_<dim::phis_value_<V, Q, D>, DecPow>
+    {
+        using type = dim::phis_value_<V, Q, apply_factor<D, DecPow>>;
+    };
 }}
 
 namespace robot {
+
+    template <typename ...>
+    struct phis_value_tmp;
+
+    template <typename ValueType, typename Quantity, typename Unit, typename Factor>
+    struct phis_value_tmp<ValueType, dim::dimension<Quantity, Unit, Factor>>
+    {
+        using type = dim::phis_value_<ValueType, Quantity, dim::dimension<Quantity, Unit, Factor>>;
+    };
+
+    template <typename ValueType, typename Dimension>
+    using phis_value = typename phis_value_tmp<ValueType, Dimension>::type;
 
     template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
     inline
