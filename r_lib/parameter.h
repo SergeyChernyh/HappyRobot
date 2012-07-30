@@ -2,35 +2,69 @@
 #define __R_PARAMETER__
 
 #include <vector>
-#include "dimension_table.h"
+#include <functional>
+#include <limits>
+#include <thread>
+#include <mutex>
+#include "phis_value.h"
 #include "package.h"
 
-namespace robot { namespace common_protocol {
+namespace robot { namespace subsystem {
  
     template <typename T>
     class effector
     {
-        struct lambda_wrap
-        {
-            auto static lambda = [](const T& t){};
-        };
+        using f_t = std::function<void(const T&)>;
+        using f_vect_t = std::vector<f_t>;
 
-        using lambda_f = decltype(lambda_wrap::lambda);
-   
-        std::vector<lambda_f> vec;
+        f_vect_t vec;
 
     public:
-        void add(const lambda_f& l) { vec.push_back(l); }
-
         template <typename A>
         void add(const A& a) { vec.push_back([=](const T& t){ a(t); }); }
 
         void operator() (const T& t)
         {
-            for(const lambda_f& f : vec)
+            for(const f_t f : vec)
                 f(t);
         }
     };
+
+    template <typename T, T max = std::numeric_limits<T>::max(), T min = std::numeric_limits<T>::min(), T step = 1>
+    class parameter
+    {
+        T value;
+
+        effector<T> act;
+
+        std::mutex m;
+
+    public:
+        parameter() {}
+        parameter(const T& v): value(v) {}
+
+        template <typename A>
+        void add_effector(const A& t)
+        {
+            act.add(t);
+        }
+
+        void set(const T& v)
+        {
+            std::lock_guard<std::mutex> lock(m);
+            value = v;
+            act(v);
+        }
+
+        void get() const
+        {
+            std::lock_guard<std::mutex> lock(m);
+            return value;
+        }
+    };
+
+    template <typename ...Args>
+    using subsystem = metaprogramming::sequence<Args...>;
 }}
 
 #endif //__R_PARAMETER__
