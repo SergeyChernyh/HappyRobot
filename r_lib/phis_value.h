@@ -473,27 +473,27 @@ namespace robot { namespace dim
     };
 
     template <typename T, int64_t DecPow>
-    struct apply_factor_;
+    struct apply_dec_factor_;
 
     template <typename T, int64_t DecPow>
-    using apply_factor = typename apply_factor_<T, DecPow>::type;
+    using apply_dec_factor = typename apply_dec_factor_<T, DecPow>::type;
 
     template <int64_t DecPow0, int64_t DecPow1>
-    struct apply_factor_<dim::decimical_factor<DecPow0>, DecPow1>
+    struct apply_dec_factor_<dim::decimical_factor<DecPow0>, DecPow1>
     {
         using type = dim::decimical_factor<DecPow0 + DecPow1>;
     };
 
     template <typename Q, typename U, typename F, int64_t DecPow>
-    struct apply_factor_<dim::dimension<Q, U, F>, DecPow>
+    struct apply_dec_factor_<dim::dimension<Q, U, F>, DecPow>
     {
-        using type = dim::dimension<Q, U, apply_factor<F, DecPow>>;
+        using type = dim::dimension<Q, U, apply_dec_factor<F, DecPow>>;
     };
 
     template <typename V, typename Q, typename D, int64_t DecPow>
-    struct apply_factor_<dim::phis_value_<V, Q, D>, DecPow>
+    struct apply_dec_factor_<dim::phis_value_<V, Q, D>, DecPow>
     {
-        using type = dim::phis_value_<V, Q, apply_factor<D, DecPow>>;
+        using type = dim::phis_value_<V, Q, apply_dec_factor<D, DecPow>>;
     };
 }}
 
