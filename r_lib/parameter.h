@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <functional>
-#include <limits>
 #include <thread>
 #include <mutex>
 #include "phis_value.h"
@@ -66,6 +65,9 @@ namespace robot { namespace subsystem {
 
     template <typename ...Args>
     using subsystem = metaprogramming::sequence<Args...>;
+
+    template <typename Key, typename T>
+    using pair = metaprogramming::pair<Key, T>;
 }}
 
 #endif //__R_PARAMETER__
