@@ -6,9 +6,6 @@
 
 namespace robot { namespace subsystem {
 
-    template <typename Key, typename T>
-    using pair = metaprogramming::pair<Key, T>;
-
     struct x_pos;
     struct y_pos;
     struct z_pos;
