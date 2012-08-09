@@ -105,25 +105,7 @@ struct p2_at_device
 
         auto checker = [&, this](const millimetre& v)
         {
-            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get() << '\n';
-            if(v.get() < 700) {
-                this->execute_cmd<11>((int16_t)0);
-
-                if(sonar2.get() + sonar3.get() > sonar4.get() + sonar5.get())
-                    this->execute_cmd<21>((int16_t)(15));
-                else
-                    this->execute_cmd<21>((int16_t)(-15));
-            }
-            else {
-                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get()));
-                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get()));
-            }
-        };
-
-        auto checker_ = [&, this](const millimetre& v)
-        {
-            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get() << '\n';
-            if(v.get() < 500) {
+            if(sonar2.get() < 300 || sonar3.get() < 500 || sonar4.get() < 500 || sonar5.get() < 300) {
                 this->execute_cmd<11>((int16_t)0);
 
                 if(sonar2.get() + sonar3.get() > sonar4.get() + sonar5.get())
@@ -140,8 +122,8 @@ struct p2_at_device
         sonar3.add_effector(checker);
         sonar4.add_effector(checker);
 
-        sonar2.add_effector(checker_);
-        sonar5.add_effector(checker_);
+        sonar2.add_effector(checker);
+        sonar5.add_effector(checker);
     }
 
 public:
