@@ -2,7 +2,6 @@
 #define __SONAR_SUBSYSTEM__
 
 #include "parameter.h"
-#include "system_si_metrics.h"
 
 namespace robot { namespace subsystem {
 

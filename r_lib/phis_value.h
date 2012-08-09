@@ -15,7 +15,7 @@ namespace robot { namespace dim
         namespace m = metaprogramming;
 
         template <typename, int>
-        struct token;
+        struct token{};
 
         template <bool add_to_tail, typename ...>
         struct add_to_expr_;
@@ -354,6 +354,21 @@ namespace robot { namespace dim
         template <typename T>
         using quantity = typename quantity_<T>::type;
 
+        template <typename T>
+        struct q_expr_
+        {
+            using type = quantity<T>;
+        };
+
+        template <typename T>
+        using q_expr = typename q_expr_<T>::type;
+
+        template <typename ...Args>
+        struct q_expr_<m::sequence<Args...>>
+        {
+            using type = m::sequence<q_expr<Args>...>;
+        };
+
         template <typename>
         struct pos_pow;
 
@@ -414,25 +429,7 @@ namespace robot { namespace dim
         };
     }
 
-    template <typename, typename, typename>
-    struct phis_value_;
-
-    template <typename, typename>
-    struct ph_value_;
-
-    template <typename ValueType, typename Quantity, typename Unit, typename Factor>
-    struct ph_value_<ValueType, dimension<Quantity, Unit, Factor>>
-    {
-        using type = phis_value_<ValueType, Quantity, dimension<Quantity, Unit, Factor>>;
-    };
-
-    template <typename T0, typename T1>
-    using ph_value = typename ph_value_<T0, T1>::type;
-
-    template <typename ValueType, typename Quantity, typename Unit, typename Factor>
-    using phis_value = phis_value_<ValueType, Quantity, dimension<Quantity, Unit, Factor>>;
-
-    template <typename ValueType, typename Quantity, typename Dimension>
+    template <typename ValueType, typename Dimension>
     class phis_value_
     {
         ValueType value;
@@ -451,16 +448,16 @@ namespace robot { namespace dim
         }
 
         template <typename V>
-        phis_value_& operator=(const phis_value_<V, Quantity, Dimension>& p)
+        phis_value_& operator=(const phis_value_<V, Dimension>& p)
         {
             value = p.value;
             return *this;
         }
 
-        template <typename V, typename Q, typename D>
-        phis_value_& operator=(const phis_value_<V, Q, D>& p)
+        template <typename V, typename D>
+        phis_value_& operator=(const phis_value_<V, D>& p)
         {
-            static_assert(is_equal<Quantity, Q>::value, "phis value assignment error: quontity mismatch");
+            static_assert(is_equal<cast_details::q_expr<Dimension>, cast_details::q_expr<D>>::value, "phis value assignment error: quontity mismatch");
             value = cast_details::full_cast<ValueType, expr<D>, expr<Dimension>>::cast(p.get());
             return *this;
         }
@@ -479,68 +476,59 @@ namespace robot { namespace dim
     using apply_dec_factor = typename apply_dec_factor_<T, DecPow>::type;
 
     template <int64_t DecPow0, int64_t DecPow1>
-    struct apply_dec_factor_<dim::decimical_factor<DecPow0>, DecPow1>
+    struct apply_dec_factor_<decimical_factor<DecPow0>, DecPow1>
     {
-        using type = dim::decimical_factor<DecPow0 + DecPow1>;
+        using type = decimical_factor<DecPow0 + DecPow1>;
     };
 
     template <typename Q, typename U, typename F, int64_t DecPow>
-    struct apply_dec_factor_<dim::dimension<Q, U, F>, DecPow>
+    struct apply_dec_factor_<dimension<Q, U, F>, DecPow>
     {
-        using type = dim::dimension<Q, U, apply_dec_factor<F, DecPow>>;
+        using type = dimension<Q, U, apply_dec_factor<F, DecPow>>;
     };
 
-    template <typename V, typename Q, typename D, int64_t DecPow>
-    struct apply_dec_factor_<dim::phis_value_<V, Q, D>, DecPow>
+    template <typename V, typename D, int64_t DecPow>
+    struct apply_dec_factor_<phis_value_<V, D>, DecPow>
     {
-        using type = dim::phis_value_<V, Q, apply_dec_factor<D, DecPow>>;
+        using type = phis_value_<V, apply_dec_factor<D, DecPow>>;
     };
 }}
 
-namespace robot {
-
-    template <typename ...>
-    struct phis_value_tmp;
-
-    template <typename ValueType, typename Quantity, typename Unit, typename Factor>
-    struct phis_value_tmp<ValueType, dim::dimension<Quantity, Unit, Factor>>
-    {
-        using type = dim::phis_value_<ValueType, Quantity, dim::dimension<Quantity, Unit, Factor>>;
-    };
-
+namespace robot
+{
     template <typename ValueType, typename Dimension>
-    using phis_value = typename phis_value_tmp<ValueType, Dimension>::type;
+    using phis_value = dim::phis_value_<ValueType, Dimension>;
 
-    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    template <typename V0, typename D0, typename V1, typename D1>
     inline
-    dim::phis_value_<decltype(V0() * V1()), dim::expr<Q0, Q1>, dim::expr<D0, D1>>
-    operator *(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    phis_value<decltype(V0() * V1()), dim::expr<D0, D1>>
+    operator *(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
     {
-        return dim::phis_value_<decltype(V0() * V1()), dim::expr<Q0, Q1>, dim::expr<D0, D1>>(p0.get() * p1.get());
+        return phis_value<decltype(V0() * V1()), dim::expr<D0, D1>>(p0.get() * p1.get());
     }
 
-    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    template <typename V0, typename D0, typename V1, typename D1>
     inline
-    dim::phis_value_<decltype(V0() / V1()), dim::expr<Q0, dim::power<Q1, -1>>, dim::expr<D0,  dim::power<D1, -1>>>
-    operator /(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    phis_value<decltype(V0() / V1()), dim::expr<D0,  dim::power<D1, -1>>>
+    operator /(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
     {
-        return dim::phis_value_<decltype(V0() / V1()), dim::expr<Q0, dim::power<Q1, -1>>, dim::expr<D0,  dim::power<D1, -1>>>(p0.get() / p1.get());
+        return phis_value<decltype(V0() / V1()), dim::expr<D0,  dim::power<D1, -1>>>(p0.get() / p1.get());
     }
 
-    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    template <typename V0, typename D0, typename V1, typename D1>
     inline
-    dim::phis_value_<decltype(V0() + V1()), Q0, D0>
-    operator +(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    phis_value<decltype(V0() + V1()), D0>
+    operator +(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
     {
-        return dim::phis_value_<decltype(V0() + V1()), Q0, D0>(p0.get() + p1.get());
+        return phis_value<decltype(V0() + V1()), D0>(p0.get() + p1.get());
     }
 
-    template <typename V0, typename Q0, typename D0, typename V1, typename Q1, typename D1>
+    template <typename V0, typename D0, typename V1, typename D1>
     inline
-    dim::phis_value_<decltype(V0() - V1()), Q0, D0>
-    operator -(const dim::phis_value_<V0, Q0, D0>& p0, const dim::phis_value_<V1, Q1, D1>& p1)
+    phis_value<decltype(V0() - V1()), D0>
+    operator -(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
     {
-        return dim::phis_value_<decltype(V0() - V1()), Q0, D0>(p0.get() - p1.get());
+        return phis_value<decltype(V0() - V1()), D0>(p0.get() - p1.get());
     }
 }
 

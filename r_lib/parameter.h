@@ -6,7 +6,6 @@
 #include <thread>
 #include <mutex>
 #include "phis_value.h"
-#include "package.h"
 
 namespace robot { namespace subsystem {
  
@@ -38,6 +37,8 @@ namespace robot { namespace subsystem {
 
         std::mutex m;
 
+        using lock_t = std::lock_guard<std::mutex>;
+
     public:
         parameter() {}
         parameter(const T& v): value(v) {}
@@ -51,14 +52,13 @@ namespace robot { namespace subsystem {
         template <typename A>
         void set(const A& v)
         {
-            std::lock_guard<std::mutex> lock(m);
+            lock_t lock(m);
             value = v;
             act(value);
         }
 
         T get() const
         {
-            std::lock_guard<std::mutex> lock(m);
             return value;
         }
     };

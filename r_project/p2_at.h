@@ -1,174 +1,212 @@
-#ifndef __P2_AT_PROTOCOL_NO_HAIRY_
-#define __P2_AT_PROTOCOL_NO_HAIRY_
+#ifndef __P2_AT_BINDING__
+#define __P2_AT_BINDING__
 
-#include <vector>
-#include <string>
-
-#include "package.h"
-#include "parameter.h"
+#include <thread>
+#include "system_si_metrics.h"
+#include "no_system_si_metrics.h"
+#include "sonar_subsystem.h"
+#include "move_subsystem.h"
+#include "p2_at_protocol.h"
 
 namespace robot { namespace p2_at
 {
-    using namespace metaprogramming;
 
-    template <typename ...Args>
-    using pattern = package_creation::pattern<Args...>;
+namespace si = system_si_metrics;
+namespace no_si = no_system_si_metrics;
 
-    template <typename ...Args>
-    using pack = package_creation::package<Args...>;
+namespace a = sequence_access;
 
-    using nothing = pattern<>;
+template <typename Interface>
+struct p2_at_device
+{
+    using millimetre                   = si::apply_factor<si::metre<int16_t>, -3>;
+    using p2_at_mobile_sim_length_unit = si::apply_factor<si::metre<int16_t>, -4>;
 
-    template <typename T, T C>
-    using constant = std::integral_constant<T, C>;
+    using second      = si::second<uint64_t>;
+    using millisecond = si::apply_factor<si::metre<int16_t>, -3>;
 
-    using head_t = constant<uint16_t, 0xfbfa>;
+    using degree = no_si::degree<int16_t>;
 
-    constexpr uint16_t byte_swap(uint16_t p) { return ((p % 0x100) << 8) | (p / 0x100); }
+    using sonar = subsystem::sonar<millimetre, millisecond>;
+    using sonar_bar_t = std::array<sonar, 16>;
 
-    template <typename T>
-    uint16_t chck_sum_calc(const package_creation::package<T>& pack)
-    {
-        const uint8_t *ptr = pack.get_data();
-        uint16_t c = 0;
-        uint16_t n = (pack.data_size());
+    using move_t = subsystem::move_subsystem<millimetre, degree, second>;
 
-        while (n > 1) {
-            c += (*(ptr)<<8) | *(ptr+1);
-            n -= 2;
-            ptr += 2;
-        }
+    class io_ctrl;
 
-        if (n > 0)
-            c ^= (uint16_t)*(ptr++);
-        return byte_swap(c);
-    }
-
-    /////// Message Format ////////////////////////////////
-
-    struct message_header_key;
-
-    struct head_key;
-    struct byte_count_key;
-    struct message_body_key;
-    struct chck_sum_key;
-
-    using message_header =
-    pattern
-    <
-        pair<head_key      , head_t>,
-        pair<byte_count_key, uint8_t>
-    >;
-
-    template <typename T>
-    using message =
-    pattern
-    <
-        pair<message_header_key, message_header>,
-        pair<message_body_key  , T>,
-        pair<chck_sum_key      , uint16_t>
-    >;
-
-    //////////// Client Cmd ///////////////////////////////
-
-    using arg_id_table =
-    pattern
-    <
-        pair<nothing, nothing>,
-
-        pair<uint16_t,    constant<uint8_t, 0x1B>>,
-        pair< int16_t,    constant<uint8_t, 0x3B>>,
-        pair<std::string, constant<uint8_t, 0x2B>>
-    >;
-
-    struct arg_key;
-
-    template <uint8_t cmd_num, typename arg = nothing>
-    using command =
-    pattern
-    <
-        constant<uint8_t, cmd_num>,
-        metaprogramming::at_key<value_type<arg>, arg_id_table>,
-        pair<arg_key, arg>
-    >;
-
-    template <uint8_t cmd_num, typename T>
-    pack<message<command<cmd_num, T>>> cmd(const T& p)
-    {
-        using c = command<cmd_num, T>;
-        return pack<message<c>>(pack<c>(p).data_size() + sizeof(uint16_t), p, chck_sum_calc<c>(pack<c>(p)));
-    }
+    sonar_bar_t sonar_bar;
+    move_t move_ctrl;
+    io_ctrl io;
 
     template <uint8_t cmd_num>
-    pack<message<command<cmd_num>>> cmd()
+    void execute_cmd() { io.send_msg(cmd<cmd_num>()); }
+
+    template <uint8_t cmd_num, typename Arg>
+    void execute_cmd(const Arg& arg) { io.send_msg(cmd<cmd_num>(arg)); }
+
+    void parse_sip()
     {
-        using c = command<cmd_num>;
-        return pack<message<c>>(pack<c>().data_size() + sizeof(uint16_t), chck_sum_calc<c>(pack<c>()));
+        namespace a = sequence_access;
+        auto server_info = io.recieve_sip();
+
+        auto message_body = a::at_key<message_body_key>(server_info);
+        auto sonars       = a::at_key<sonar_measurements>(message_body);
+
+        for(auto current_sonar : sonars) {
+            auto sonar_num = a::at_key<sonar_number>(current_sonar);
+            auto sonar_val = a::at_key<sonar_range>(current_sonar);
+            a::at_key<subsystem::value>(sonar_bar[sonar_num]).set(p2_at_mobile_sim_length_unit(sonar_val));
+        }
+
+        execute_cmd<0>();
+    };
+
+    void read_echo() { io.read_echo(); }
+
+    void start()
+    {
+        execute_cmd<0>(); read_echo();
+        execute_cmd<1>(); read_echo();
+        execute_cmd<2>(); read_echo();
+
+        execute_cmd<1>();
+
+        execute_cmd<4 >((int16_t)1);
+        //execute_cmd<11>((int16_t)1200);
     }
-    //////////// Sip //////////////////////////////////////
 
-    struct status_key;
+    void change_move_param(const bool& move, const int16_t& cur_vel, const int16_t& cur_r_vel)
+    {
+        execute_cmd<11>((int16_t)(move ? cur_vel : 0));
+        execute_cmd<21>((int16_t)(move ? cur_r_vel : 0));
+    }
 
-    struct x_pos_key;
-    struct y_pos_key;    
-    struct th_pos_key;
+    void bind_move()
+    {
+        auto& current_vel =   a::at_key<subsystem::set_linear_vel >(move_ctrl);
+        auto& current_r_vel = a::at_key<subsystem::set_angular_vel>(move_ctrl);
+        auto& do_move =       a::at_key<subsystem::move           >(move_ctrl);
 
-    struct l_vel_key;    
-    struct r_vel_key;
+        std::cout << "DEBUG --> " << this << '\n';
 
-    struct battery;
-    struct stall_and_bumpers;
-    struct control;
-    struct flags;
-    struct compass;
+        using mm_per_sec = decltype(current_vel.get());
+        using deg_per_sec = decltype(current_r_vel.get());
+ 
+        do_move.add_effector      ([&, this](const bool       & v) { this->change_move_param(v            , current_vel.get().get(), current_r_vel.get().get()); });
+        current_vel.add_effector  ([&, this](const mm_per_sec & v) { this->change_move_param(do_move.get(), v.get()                , current_r_vel.get().get()); });
+        current_r_vel.add_effector([&, this](const deg_per_sec& v) { this->change_move_param(do_move.get(), current_vel.get().get(), v.get()                  ); });
+    }
 
-    struct sonar_measurements;
-    struct sonar_number;
-    struct sonar_range;
+    void bind_subsystems()
+    {
+        auto& sonar2 = a::at_key<subsystem::value>(sonar_bar[2]);
+        auto& sonar3 = a::at_key<subsystem::value>(sonar_bar[3]);
+        auto& sonar4 = a::at_key<subsystem::value>(sonar_bar[4]);
+        auto& sonar5 = a::at_key<subsystem::value>(sonar_bar[5]);
 
-    struct timer;
-    struct analog;
-    struct digin;
-    struct digout;
+        auto checker = [&, this](const millimetre& v)
+        {
+            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get().get() << '\n';
+            if(v.get() < 700) {
+                this->execute_cmd<11>((int16_t)0);
 
-    using sip =
-    pattern
-    <
-        pair<status_key, uint8_t>,
+                if(sonar2.get().get() + sonar3.get().get() > sonar4.get().get() + sonar5.get().get())
+                    this->execute_cmd<21>((int16_t)(15));
+                else
+                    this->execute_cmd<21>((int16_t)(-15));
+            }
+            else {
+                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get().get()));
+                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get().get()));
+            }
+        };
 
-        pair<x_pos_key, uint16_t>,
-        pair<y_pos_key, uint16_t>,
-        pair<th_pos_key, int16_t>,
+        auto checker_ = [&, this](const millimetre& v)
+        {
+            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get().get() << '\n';
+            if(v.get() < 500) {
+                this->execute_cmd<11>((int16_t)0);
 
-        pair<l_vel_key, int16_t>,
-        pair<r_vel_key, int16_t>,
+                if(sonar2.get().get() + sonar3.get().get() > sonar4.get().get() + sonar5.get().get())
+                    this->execute_cmd<21>((int16_t)(15));
+                else
+                    this->execute_cmd<21>((int16_t)(-15));
+            }
+            else {
+                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get().get()));
+                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get().get()));
+            }
+        };
 
-        pair<battery, uint8_t>,
-        pair<stall_and_bumpers, uint16_t>,
-        pair<control, int16_t>,
-        pair<flags, uint16_t>,
-        pair<compass, uint8_t>,
+        sonar3.add_effector(checker);
+        sonar4.add_effector(checker);
 
-        pair
-        <
-            sonar_measurements,
-            package_creation::repeat
-            <
-                pattern
-                <
-                    pair<sonar_number, uint8_t>,
-                    pair<sonar_range, uint16_t>
-                >,
-                uint8_t
-            >
-        >,
+        sonar2.add_effector(checker_);
+        sonar5.add_effector(checker_);
+    }
 
-        pair<timer, uint16_t>,
-        pair<analog, uint8_t>,
-        pair<digin, uint8_t>,
-        pair<digout, uint8_t>
-    >;
-}
+public:
+    p2_at_device(Interface& i):
+        io(i)
+    {
+        start();
+        std::thread t([this](){ while(true) this->parse_sip(); });
 
-}
-#endif //__P2_AT_PROTOCOL_NO_HAIRY_
+        a::at_key<subsystem::move           >(move_ctrl).set(0);
+        a::at_key<subsystem::set_linear_vel >(move_ctrl).set(0);
+        a::at_key<subsystem::set_angular_vel>(move_ctrl).set(0);
+
+        bind_move();
+        bind_subsystems();
+
+        a::at_key<subsystem::set_linear_vel >(move_ctrl).set(1200);
+        a::at_key<subsystem::move           >(move_ctrl).set(1);
+
+        t.join();
+    }
+};
+
+template <typename Interface>
+class p2_at_device<Interface>::io_ctrl
+{
+    Interface& interface;
+
+    static constexpr size_t buffer_size = 0xff;
+    uint8_t read_buffer[buffer_size];
+
+    void update_read_buffer()
+    {
+        using namespace robot::package_creation;
+
+        uint8_t byte_readed = 0;
+
+        constexpr size_t header_size = size<message_header>::value;
+
+        interface.read(read_buffer, header_size);
+        parser<message_header>::parse(read_buffer, byte_readed);
+        interface.read(read_buffer + header_size, byte_readed);
+    }
+
+public:
+    io_ctrl(Interface& i): interface(i) {}
+
+    template <typename Msg>
+    void send_msg(const Msg& msg)
+    {
+        interface.write((const char*)(msg.get_data()), msg.data_size());
+    }
+
+    message<sip> recieve_sip()
+    {
+        update_read_buffer();
+        message<sip> server_info;
+        package_creation::parser<message<sip>>::parse(read_buffer, server_info);
+        return server_info;
+    }
+
+    void read_echo() { update_read_buffer(); }
+};
+
+}}
+
+#endif //__P2_AT_BINDING__

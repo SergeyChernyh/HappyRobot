@@ -1,5 +1,6 @@
 #include <assert.h>
-#include "../phis_value.h"
+#include "phis_value.h"
+#include "sequence.h"
 
 #include <iostream>
 
@@ -51,12 +52,15 @@ namespace robot { namespace dim
     };
 }}
 
+template <typename ValueType, typename Quantity, typename Unit, typename Factor>
+using p_value = phis_value<ValueType, dimension<Quantity, Unit, Factor>>;
+
 int main()
 {
-    using pmeter_t =      phis_value<double, size, metre, decimical_factor<0>>;
-    using psantimeter_t = phis_value<double, size, metre, decimical_factor<-2>>;
+    using pmeter_t =      p_value<double, size, metre, decimical_factor<0>>;
+    using psantimeter_t = p_value<double, size, metre, decimical_factor<-2>>;
 
-    using pinch_t =       phis_value<double, size, inch, decimical_factor<0>>;
+    using pinch_t =       p_value<double, size, inch, decimical_factor<0>>;
 
     pmeter_t p3_0;
     pmeter_t p3_1(12);
@@ -118,21 +122,25 @@ int main()
 
     std::cout << cast_acc::cast(2) << '\n';
 
-    using psecond_t     = phis_value<double, time_t_, second, decimical_factor<0 >>;
-    using phour_t       = phis_value<double, time_t_, hour  , decimical_factor<0 >>;
-    using psantimeter_t = phis_value<double, size, metre , decimical_factor<-2>>;
-    using pinch_t       = phis_value<double, size, inch  , decimical_factor<0 >>;
+    using psecond_t     = p_value<double, time_t_, second, decimical_factor<0 >>;
+    using phour_t       = p_value<double, time_t_, hour  , decimical_factor<0 >>;
+    using psantimeter_t = p_value<double, size, metre , decimical_factor<-2>>;
+    using pinch_t       = p_value<double, size, inch  , decimical_factor<0 >>;
 
     phour_t h(1);
     pinch_t i(1);
 
     auto a = i / h / h;
 
-    phis_value_<double, expr<size, power<time_t_, -2>>, expr<dsantimeter_t, power<dsecond_t, -2>>> b;
+    auto c = h*h*h*h*h;
+
+    phis_value_<double, expr<dsantimeter_t, power<dsecond_t, -2>>> b;
 
     b = a;
 
     std::cout << b.get() << '\n';
+    std::cout << c.get() << '\n';
+
 
     return 0;
 }
