@@ -441,6 +441,8 @@ namespace robot { namespace dim
         void set(const ValueType& v) { value = v; }
         ValueType get() const { return value; }
 
+        operator ValueType() const { return value; }
+
         phis_value_& operator=(const phis_value_& p)
         {
             value = p.value;

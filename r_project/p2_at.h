@@ -72,7 +72,6 @@ struct p2_at_device
         execute_cmd<1>();
 
         execute_cmd<4 >((int16_t)1);
-        //execute_cmd<11>((int16_t)1200);
     }
 
     void change_move_param(const bool& move, const int16_t& cur_vel, const int16_t& cur_r_vel)
@@ -92,9 +91,9 @@ struct p2_at_device
         using mm_per_sec = decltype(current_vel.get());
         using deg_per_sec = decltype(current_r_vel.get());
  
-        do_move.add_effector      ([&, this](const bool       & v) { this->change_move_param(v            , current_vel.get().get(), current_r_vel.get().get()); });
-        current_vel.add_effector  ([&, this](const mm_per_sec & v) { this->change_move_param(do_move.get(), v.get()                , current_r_vel.get().get()); });
-        current_r_vel.add_effector([&, this](const deg_per_sec& v) { this->change_move_param(do_move.get(), current_vel.get().get(), v.get()                  ); });
+        do_move.add_effector      ([&, this](const bool       & v) { this->change_move_param(v            , current_vel.get(), current_r_vel.get()); });
+        current_vel.add_effector  ([&, this](const mm_per_sec & v) { this->change_move_param(do_move.get(), v.get()          , current_r_vel.get()); });
+        current_r_vel.add_effector([&, this](const deg_per_sec& v) { this->change_move_param(do_move.get(), current_vel.get(), v.get()            ); });
     }
 
     void bind_subsystems()
@@ -106,35 +105,35 @@ struct p2_at_device
 
         auto checker = [&, this](const millimetre& v)
         {
-            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get().get() << '\n';
+            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get() << '\n';
             if(v.get() < 700) {
                 this->execute_cmd<11>((int16_t)0);
 
-                if(sonar2.get().get() + sonar3.get().get() > sonar4.get().get() + sonar5.get().get())
+                if(sonar2.get() + sonar3.get() > sonar4.get() + sonar5.get())
                     this->execute_cmd<21>((int16_t)(15));
                 else
                     this->execute_cmd<21>((int16_t)(-15));
             }
             else {
-                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get().get()));
-                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get().get()));
+                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get()));
+                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get()));
             }
         };
 
         auto checker_ = [&, this](const millimetre& v)
         {
-            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get().get() << '\n';
+            std::cout << v.get() << " " << a::at_key<subsystem::set_linear_vel>(this->move_ctrl).get() << '\n';
             if(v.get() < 500) {
                 this->execute_cmd<11>((int16_t)0);
 
-                if(sonar2.get().get() + sonar3.get().get() > sonar4.get().get() + sonar5.get().get())
+                if(sonar2.get() + sonar3.get() > sonar4.get() + sonar5.get())
                     this->execute_cmd<21>((int16_t)(15));
                 else
                     this->execute_cmd<21>((int16_t)(-15));
             }
             else {
-                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get().get()));
-                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get().get()));
+                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get()));
+                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get()));
             }
         };
 
