@@ -39,14 +39,14 @@ void send_cmd(int16_t p, Interface& i)
 
     msg x;
 
-    sequence_access::at_c<2>(sequence_access::at_key<message_body_key>(x)) = p;
-    sequence_access::at_key<chck_sum_key>(x) = chck_sum_calc<cmd>(package<cmd>(p));
+    at_c<2>(at_key<message_body_key>(x)) = p;
+    at_key<chck_sum_key>(x) = chck_sum_calc<cmd>(package<cmd>(p));
 
     auto m = package<msg>(x);//p, chck_sum_calc<cmd>(package<cmd>(p)));
 
     robot::package_creation::serialization::serialize_tmp_wrapper<msg>::deserialize(m.get_data(), x);
 
-    std::cout << "---> " << sequence_access::at_c<2>(sequence_access::at_key<message_body_key>(x)) << std::endl;
+    std::cout << "---> " << at_c<2>(at_key<message_body_key>(x)) << std::endl;
 
     i.write((const char*)(m.get_data()), package_creation::size<msg>::value);
 }
@@ -65,17 +65,17 @@ void send_vec_cmd(int16_t p, Interface& i)
 
     msg x;
 
-    sequence_access::at_key<arg_key>(sequence_access::at_key<message_body_key>(x)) = vec;
-    sequence_access::at_key<chck_sum_key>(x) = chck_sum_calc<cmd>(cmd_);
-    sequence_access::at_key<byte_count_key>(sequence_access::at_key<message_header_key>(x)) = cmd_.data_size() + package_creation::size<chck_sum_t<cmd>>::value;
+    at_key<arg_key>(at_key<message_body_key>(x)) = vec;
+    at_key<chck_sum_key>(x) = chck_sum_calc<cmd>(cmd_);
+    at_key<byte_count_key>(at_key<message_header_key>(x)) = cmd_.data_size() + package_creation::size<chck_sum_t<cmd>>::value;
 
     auto m = package<msg>(x);//cmd_.data_size() + package_creation::size<chck_sum_t<cmd>>::value, vec, chck_sum_calc<cmd>(cmd_));
 
-    //sequence_access::at_key<arg_key>(sequence_access::at_key<message_body_key>(x))[0] = 333;
+    //at_key<arg_key>(at_key<message_body_key>(x))[0] = 333;
 
     robot::package_creation::serialization::serialize_tmp_wrapper<msg>::deserialize(m.get_data(), x);
 
-    //std::cout << "========> " << sequence_access::at_c<2>(sequence_access::at_key<message_body_key>(x))[0] << std::endl;
+    //std::cout << "========> " << at_c<2>(at_key<message_body_key>(x))[0] << std::endl;
 
     i.write((const char*)(m.get_data()), m.data_size()); //TODO
 }
@@ -111,17 +111,15 @@ int main(int argc, const char* argv[])
     send_vec_cmd<11>(1200, tcp);
 
     while(true) {
-        namespace a = sequence_access;
-
         read_message();
         p2_at::message<p2_at::sip> server_info;
         parser<p2_at::message<p2_at::sip>>::parse(buffer, server_info);
 
-        auto sonars = a::at_key<p2_at::sonar_measurements>(a::at_key<p2_at::message_body_key>(server_info));
+        auto sonars = at_key<p2_at::sonar_measurements>(at_key<p2_at::message_body_key>(server_info));
 
         std::cout << "Sonars\n";
         for(size_t i = 0; i < sonars.size(); i++)
-            std::cout << a::at_key<p2_at::sonar_number>(sonars[i]) << ") " << a::at_key<p2_at::sonar_range>(sonars[i]) << std::endl;
+            std::cout << at_key<p2_at::sonar_number>(sonars[i]) << ") " << at_key<p2_at::sonar_range>(sonars[i]) << std::endl;
 
         send_cmd<0>(tcp);
     }

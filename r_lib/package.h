@@ -343,7 +343,7 @@ namespace robot { namespace package_creation
 
             F current(const pattern<F, Args...>& p) const
             {
-                return sequence_access::at_c<0>(p);
+                return at_c<0>(p);
             }
 
             static void serialize(uint8_t *dst, const F& f, const FArgs&... args)

@@ -8,9 +8,16 @@
 
 namespace robot { namespace p2_at
 {
-    using namespace metaprogramming;
+    template <typename Key, typename T>
+    using pair = metaprogramming::pair<Key, T>;
 
-    using nothing = sequence<>;
+    template <typename ...Args>
+    using pattern = package_creation::pattern<Args...>;
+
+    template <typename ...Args>
+    using pack = package_creation::package<Args...>;
+
+    using nothing = pattern<>;
 
     template <typename T, T C>
     using constant = std::integral_constant<T, C>;
@@ -19,14 +26,14 @@ namespace robot { namespace p2_at
 
     template <typename T>
     using calc_byte_count_options =
-    sequence
+    pattern
     <
         pair<std::false_type, uint8_t>,
-        pair<std::true_type , byte_count<uint8_t, T, uint16_t>>
+        pair<std::true_type , metaprogramming::byte_count<uint8_t, T, uint16_t>>
     >;
 
     template <typename T>
-    using byte_count_t = at_key<is_const_size<T>, calc_byte_count_options<T>>;
+    using byte_count_t = metaprogramming::at_key<metaprogramming::is_const_size<T>, calc_byte_count_options<T>>;
 
     /////////// Chck Sum calc /////////////////////////////
 
@@ -45,25 +52,25 @@ namespace robot { namespace p2_at
     template <typename T>
     struct chck_sum_calc_t
     {
-        using type = unspecified;
+        using type = metaprogramming::unspecified;
     };
 
     template <typename ...Args>
-    struct chck_sum_calc_t<sequence<Args...>>
+    struct chck_sum_calc_t<pattern<Args...>>
     {
         using type = constant<uint16_t, byte_swap(chck_sum_calc(0, Args::value...))>;
     };
 
     template <typename T>
     using check_sum_calc_options = 
-    sequence
+    pattern
     <
         pair<std::false_type, uint16_t>,
-        pair<std::true_type , typename chck_sum_calc_t<serialize<T>>::type>
+        pair<std::true_type , typename chck_sum_calc_t<metaprogramming::serialize<T>>::type>
     >;
 
     template <typename T>
-    using chck_sum_t = at_key<is_const<T>, check_sum_calc_options<T>>;
+    using chck_sum_t = metaprogramming::at_key<metaprogramming::is_const<T>, check_sum_calc_options<T>>;
 
     template <typename T>
     uint16_t chck_sum_calc(const package_creation::package<T>& pack)
@@ -94,7 +101,7 @@ namespace robot { namespace p2_at
 
     template <typename T>
     using message_header =
-    sequence
+    pattern
     <
         pair<head_key      , head_t>,
         pair<byte_count_key, byte_count_t<T>>
@@ -102,7 +109,7 @@ namespace robot { namespace p2_at
 
     template <typename T>
     using message =
-    sequence
+    pattern
     <
         pair<message_header_key, message_header<T>>,
         pair<message_body_key  , T>,
@@ -112,7 +119,7 @@ namespace robot { namespace p2_at
     //////////// Client Cmd ///////////////////////////////
 
     using arg_id_table =
-    sequence
+    pattern
     <
         pair<nothing, nothing>,
 
@@ -128,10 +135,10 @@ namespace robot { namespace p2_at
 
     template <uint8_t cmd_num, typename arg = nothing>
     using command =
-    sequence
+    pattern
     <
         constant<uint8_t, cmd_num>,
-        at_key<value_type<arg>, arg_id_table>,
+        metaprogramming::at_key<metaprogramming::value_type<arg>, arg_id_table>,
         pair<arg_key, arg>
     >;
 
@@ -162,7 +169,7 @@ namespace robot { namespace p2_at
     struct digout;
 
     using sip =
-    sequence
+    pattern
     <
         pair<status_key, uint8_t>,
 
@@ -184,7 +191,7 @@ namespace robot { namespace p2_at
             sonar_measurements,
             package_creation::repeat
             <
-                sequence
+                pattern
                 <
                     pair<sonar_number, uint8_t>,
                     pair<sonar_range, uint16_t>

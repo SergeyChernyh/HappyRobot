@@ -9,7 +9,8 @@
 
 namespace robot { namespace p2_at
 {
-    using namespace metaprogramming;
+    template <typename Key, typename T>
+    using pair = metaprogramming::pair<Key, T>;
 
     template <typename ...Args>
     using pattern = package_creation::pattern<Args...>;
@@ -88,7 +89,7 @@ namespace robot { namespace p2_at
     pattern
     <
         constant<uint8_t, cmd_num>,
-        metaprogramming::at_key<value_type<arg>, arg_id_table>,
+        metaprogramming::at_key<metaprogramming::value_type<arg>, arg_id_table>,
         pair<arg_key, arg>
     >;
 

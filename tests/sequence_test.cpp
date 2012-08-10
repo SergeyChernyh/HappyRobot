@@ -4,11 +4,10 @@
 #include <assert.h>
 #include <iostream>
 
-#include "../sequence.h"
+#include "sequence.h"
 
 namespace m = robot::metaprogramming;
 using namespace robot;
-using namespace robot::sequence_access;
 
 struct s;
 

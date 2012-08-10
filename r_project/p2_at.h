@@ -14,8 +14,6 @@ namespace robot { namespace p2_at
 namespace si = system_si_metrics;
 namespace no_si = no_system_si_metrics;
 
-namespace a = sequence_access;
-
 template <typename Interface>
 struct p2_at_device
 {
@@ -46,16 +44,15 @@ struct p2_at_device
 
     void parse_sip()
     {
-        namespace a = sequence_access;
         auto server_info = io.recieve_sip();
 
-        auto message_body = a::at_key<message_body_key>(server_info);
-        auto sonars       = a::at_key<sonar_measurements>(message_body);
+        auto message_body = at_key<message_body_key>(server_info);
+        auto sonars       = at_key<sonar_measurements>(message_body);
 
         for(auto current_sonar : sonars) {
-            auto sonar_num = a::at_key<sonar_number>(current_sonar);
-            auto sonar_val = a::at_key<sonar_range>(current_sonar);
-            a::at_key<subsystem::value>(sonar_bar[sonar_num]).set(p2_at_mobile_sim_length_unit(sonar_val));
+            auto sonar_num = at_key<sonar_number>(current_sonar);
+            auto sonar_val = at_key<sonar_range>(current_sonar);
+            at_key<subsystem::value>(sonar_bar[sonar_num]).set(p2_at_mobile_sim_length_unit(sonar_val));
         }
 
         execute_cmd<0>();
@@ -82,9 +79,9 @@ struct p2_at_device
 
     void bind_move()
     {
-        auto& current_vel =   a::at_key<subsystem::set_linear_vel >(move_ctrl);
-        auto& current_r_vel = a::at_key<subsystem::set_angular_vel>(move_ctrl);
-        auto& do_move =       a::at_key<subsystem::move           >(move_ctrl);
+        auto& current_vel =   at_key<subsystem::set_linear_vel >(move_ctrl);
+        auto& current_r_vel = at_key<subsystem::set_angular_vel>(move_ctrl);
+        auto& do_move =       at_key<subsystem::move           >(move_ctrl);
 
         std::cout << "DEBUG --> " << this << '\n';
 
@@ -98,10 +95,10 @@ struct p2_at_device
 
     void bind_subsystems()
     {
-        auto& sonar2 = a::at_key<subsystem::value>(sonar_bar[2]);
-        auto& sonar3 = a::at_key<subsystem::value>(sonar_bar[3]);
-        auto& sonar4 = a::at_key<subsystem::value>(sonar_bar[4]);
-        auto& sonar5 = a::at_key<subsystem::value>(sonar_bar[5]);
+        auto& sonar2 = at_key<subsystem::value>(sonar_bar[2]);
+        auto& sonar3 = at_key<subsystem::value>(sonar_bar[3]);
+        auto& sonar4 = at_key<subsystem::value>(sonar_bar[4]);
+        auto& sonar5 = at_key<subsystem::value>(sonar_bar[5]);
 
         auto checker = [&, this](const millimetre& v)
         {
@@ -114,8 +111,8 @@ struct p2_at_device
                     this->execute_cmd<21>((int16_t)(-15));
             }
             else {
-                this->execute_cmd<11>((int16_t)(a::at_key<subsystem::set_linear_vel> (this->move_ctrl).get()));
-                this->execute_cmd<21>((int16_t)(a::at_key<subsystem::set_angular_vel>(this->move_ctrl).get()));
+                this->execute_cmd<11>((int16_t)(at_key<subsystem::set_linear_vel> (this->move_ctrl).get()));
+                this->execute_cmd<21>((int16_t)(at_key<subsystem::set_angular_vel>(this->move_ctrl).get()));
             }
         };
 
@@ -133,15 +130,15 @@ public:
         start();
         std::thread t([this](){ while(true) this->parse_sip(); });
 
-        a::at_key<subsystem::move           >(move_ctrl).set(0);
-        a::at_key<subsystem::set_linear_vel >(move_ctrl).set(0);
-        a::at_key<subsystem::set_angular_vel>(move_ctrl).set(0);
+        at_key<subsystem::move           >(move_ctrl).set(0);
+        at_key<subsystem::set_linear_vel >(move_ctrl).set(0);
+        at_key<subsystem::set_angular_vel>(move_ctrl).set(0);
 
         bind_move();
         bind_subsystems();
 
-        a::at_key<subsystem::set_linear_vel >(move_ctrl).set(1200);
-        a::at_key<subsystem::move           >(move_ctrl).set(1);
+        at_key<subsystem::set_linear_vel >(move_ctrl).set(1200);
+        at_key<subsystem::move           >(move_ctrl).set(1);
 
         t.join();
     }
