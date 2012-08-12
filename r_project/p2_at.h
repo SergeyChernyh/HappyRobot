@@ -14,8 +14,7 @@ namespace robot { namespace p2_at
 namespace si = system_si_metrics;
 namespace no_si = no_system_si_metrics;
 
-template <typename Interface>
-struct p2_at_device
+struct p2_at_metrics
 {
     using millimetre                   = si::apply_factor<si::metre<int16_t>, -3>;
     using p2_at_mobile_sim_length_unit = si::apply_factor<si::metre<int16_t>, -4>;
@@ -29,7 +28,15 @@ struct p2_at_device
     using sonar_bar_t = std::array<sonar, 16>;
 
     using move_t = subsystem::move_subsystem<millimetre, degree, second>;
+};
 
+struct p2_at_subsystems: p2_at_metrics
+{
+};
+
+template <typename Interface>
+class p2_at_device: p2_at_subsystems
+{
     class io_ctrl;
 
     sonar_bar_t sonar_bar;
@@ -42,9 +49,16 @@ struct p2_at_device
     template <uint8_t cmd_num, typename Arg>
     void execute_cmd(const Arg& arg) { io.send_msg(cmd<cmd_num>(arg)); }
 
+    message<sip> get_sip()
+    {
+        message<sip> server_info;
+        io.recieve_msg(server_info);
+        return server_info;
+    }
+
     void parse_sip()
     {
-        auto server_info = io.recieve_sip();
+        auto server_info = get_sip();
 
         auto message_body = at_key<message_body_key>(server_info);
         auto sonars       = at_key<sonar_measurements>(message_body);
@@ -68,7 +82,7 @@ struct p2_at_device
 
         execute_cmd<1>();
 
-        execute_cmd<4 >((int16_t)1);
+        execute_cmd<4>((int16_t)1);
     }
 
     void change_move_param(const bool& move, const int16_t& cur_vel, const int16_t& cur_r_vel)
@@ -83,14 +97,11 @@ struct p2_at_device
         auto& current_r_vel = at_key<subsystem::set_angular_vel>(move_ctrl);
         auto& do_move =       at_key<subsystem::move           >(move_ctrl);
 
-        std::cout << "DEBUG --> " << this << '\n';
+        auto move_binder = [&, this]() { this->change_move_param(do_move.get(), current_vel.get(), current_r_vel.get()); };
 
-        using mm_per_sec = decltype(current_vel.get());
-        using deg_per_sec = decltype(current_r_vel.get());
- 
-        do_move.add_effector      ([&, this](const bool       & v) { this->change_move_param(v            , current_vel.get(), current_r_vel.get()); });
-        current_vel.add_effector  ([&, this](const mm_per_sec & v) { this->change_move_param(do_move.get(), v.get()          , current_r_vel.get()); });
-        current_r_vel.add_effector([&, this](const deg_per_sec& v) { this->change_move_param(do_move.get(), current_vel.get(), v.get()            ); });
+        do_move.add_effector      (move_binder);
+        current_vel.add_effector  (move_binder);
+        current_r_vel.add_effector(move_binder);
     }
 
     void bind_subsystems()
@@ -100,7 +111,7 @@ struct p2_at_device
         auto& sonar4 = at_key<subsystem::value>(sonar_bar[4]);
         auto& sonar5 = at_key<subsystem::value>(sonar_bar[5]);
 
-        auto checker = [&, this](const millimetre& v)
+        auto checker = [&, this]()
         {
             if(sonar2.get() < 300 || sonar3.get() < 500 || sonar4.get() < 500 || sonar5.get() < 300) {
                 this->execute_cmd<11>((int16_t)0);
@@ -174,12 +185,11 @@ public:
         interface.write((const char*)(msg.get_data()), msg.data_size());
     }
 
-    message<sip> recieve_sip()
+    template <typename Msg>
+    void recieve_msg(Msg& msg)
     {
         update_read_buffer();
-        message<sip> server_info;
-        package_creation::parser<message<sip>>::parse(read_buffer, server_info);
-        return server_info;
+        package_creation::parser<Msg>::parse(read_buffer, msg);
     }
 
     void read_echo() { update_read_buffer(); }
