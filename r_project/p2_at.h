@@ -171,7 +171,6 @@ public:
         execute_cmd<4 >((int16_t)1);
 
         bind_move();
-
     }
 
     void start()

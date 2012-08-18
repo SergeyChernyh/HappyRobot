@@ -501,6 +501,8 @@ namespace robot
     template <typename ValueType, typename Dimension>
     using phis_value = dim::phis_value_<ValueType, Dimension>;
 
+// arith
+
     template <typename V0, typename D0, typename V1, typename D1>
     inline
     phis_value<decltype(V0() * V1()), dim::expr<D0, D1>>
@@ -531,6 +533,44 @@ namespace robot
     operator -(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
     {
         return phis_value<decltype(V0() - V1()), D0>(p0.get() - p1.get());
+    }
+
+// comprasion
+
+    template <typename V0, typename D0, typename V1, typename D1>
+    inline bool operator ==(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
+    {
+        return p0.get() == phis_value<V0, D0>(p1).get();
+    }
+
+    template <typename V0, typename D0, typename V1, typename D1>
+    inline bool operator !=(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
+    {
+        return p0.get() != phis_value<V0, D0>(p1).get();
+    }
+
+    template <typename V0, typename D0, typename V1, typename D1>
+    inline bool operator <=(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
+    {
+        return p0.get() <= phis_value<V0, D0>(p1).get();
+    }
+
+    template <typename V0, typename D0, typename V1, typename D1>
+    inline bool operator >=(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
+    {
+        return p0.get() >= phis_value<V0, D0>(p1).get();
+    }
+
+    template <typename V0, typename D0, typename V1, typename D1>
+    inline bool operator <(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
+    {
+        return p0.get() < phis_value<V0, D0>(p1).get();
+    }
+
+    template <typename V0, typename D0, typename V1, typename D1>
+    inline bool operator >(const phis_value<V0, D0>& p0, const phis_value<V1, D1>& p1)
+    {
+        return p0.get() > phis_value<V0, D0>(p1).get();
     }
 }
 
