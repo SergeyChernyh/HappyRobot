@@ -123,7 +123,7 @@ class p2_at_device: p2_at_subsystems
     void parse_sip(const message<sip>& server_info)
     {
         parse_sonars(server_info);
-    };
+    }
 
     void parse_sonars(const message<sip>& server_info)
     {
@@ -135,7 +135,7 @@ class p2_at_device: p2_at_subsystems
             auto sonar_val = at_key<sonar_range>(current_sonar);
             at_key<subsystem::value>(sonar_bar[sonar_num]).set(p2_at_mobile_sim_length_unit(sonar_val));
         }
-    };
+    }
 
     void read_echo() { io.read_echo(); }
 
@@ -159,9 +159,8 @@ class p2_at_device: p2_at_subsystems
     }
 
 public:
-    p2_at_device(Interface& i): io(i) {}
-
-    void start()
+    p2_at_device(Interface& i):
+        io(i)
     {
         execute_cmd<0>(); read_echo();
         execute_cmd<1>(); read_echo();
@@ -173,6 +172,10 @@ public:
 
         bind_move();
 
+    }
+
+    void start()
+    {
         while(true) {
             parse_sip(get_sip());
             execute_cmd<0>();
