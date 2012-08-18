@@ -23,24 +23,88 @@ struct p2_at_metrics
     using millisecond = si::apply_factor<si::metre<int16_t>, -3>;
 
     using degree = no_si::degree<int16_t>;
-
-    using sonar = subsystem::sonar<millimetre, millisecond>;
-    using sonar_bar_t = std::array<sonar, 16>;
-
-    using move_t = subsystem::move_subsystem<millimetre, degree, second>;
 };
 
 struct p2_at_subsystems: p2_at_metrics
 {
+    using sonar = subsystem::sonar<millimetre, millisecond>;
+    using sonar_bar_t = std::array<sonar, 16>;
+
+    using move_t = subsystem::move_subsystem<millimetre, degree, second>;
+
+    sonar_bar_t sonar_bar;
+    move_t move_ctrl;
+
+    template <size_t quater>
+    void set_sonars_positions_quater()
+    {
+        using namespace subsystem;
+                     /*
+                     ^ X
+          sonars 0-3 | sonars 4-7
+           Y    q0   |    q1    
+           <---------|----------
+                q2   |    q3
+        sonars 12-15 | sonars 8-11
+                    */
+
+        static_assert(quater <= 3, "quater <= 3");
+        int16_t x_factor = quater == 0 || quater == 1;
+        int16_t y_factor = quater == 0 || quater == 2;
+
+        size_t base_sonar_num = quater * 4;
+    //0
+        at_key<x_pos>(sonar_bar[0 + base_sonar_num]).set(145 * x_factor);
+        at_key<y_pos>(sonar_bar[0 + base_sonar_num]).set(130 * y_factor);
+        at_key<z_pos>(sonar_bar[0 + base_sonar_num]).set(  0);
+
+        at_key<x_vect_pos>(sonar_bar[0 + base_sonar_num]).set(0 * x_factor);
+        at_key<y_vect_pos>(sonar_bar[0 + base_sonar_num]).set(1 * y_factor);
+        at_key<z_vect_pos>(sonar_bar[0 + base_sonar_num]).set(0);
+    //1
+        at_key<x_pos>(sonar_bar[1 + base_sonar_num]).set(115 * x_factor);
+        at_key<y_pos>(sonar_bar[1 + base_sonar_num]).set(185 * y_factor);
+        at_key<z_pos>(sonar_bar[1 + base_sonar_num]).set(  0);
+
+        at_key<x_vect_pos>(sonar_bar[1 + base_sonar_num]).set(100 * x_factor);
+        at_key<y_vect_pos>(sonar_bar[1 + base_sonar_num]).set(119 * y_factor);
+        at_key<z_vect_pos>(sonar_bar[1 + base_sonar_num]).set(  0);
+    //2
+        at_key<x_pos>(sonar_bar[2 + base_sonar_num]).set(220 * x_factor);
+        at_key<y_pos>(sonar_bar[2 + base_sonar_num]).set( 80 * y_factor);
+        at_key<z_pos>(sonar_bar[2 + base_sonar_num]).set(  0);
+
+        at_key<x_vect_pos>(sonar_bar[2 + base_sonar_num]).set(100 * x_factor);
+        at_key<y_vect_pos>(sonar_bar[2 + base_sonar_num]).set( 58 * y_factor);
+        at_key<z_vect_pos>(sonar_bar[2 + base_sonar_num]).set(  0);
+    //3
+        at_key<x_pos>(sonar_bar[3 + base_sonar_num]).set(240 * x_factor);
+        at_key<y_pos>(sonar_bar[3 + base_sonar_num]).set( 25 * y_factor);
+        at_key<z_pos>(sonar_bar[3 + base_sonar_num]).set(  0);
+
+        at_key<x_vect_pos>(sonar_bar[3 + base_sonar_num]).set(100 * x_factor);
+        at_key<y_vect_pos>(sonar_bar[3 + base_sonar_num]).set( 18 * y_factor);
+        at_key<z_vect_pos>(sonar_bar[3 + base_sonar_num]).set(  0);
+    }
+
+    void set_sonars_positions()
+    {
+        set_sonars_positions_quater<0>();
+        set_sonars_positions_quater<1>();
+        set_sonars_positions_quater<2>();
+        set_sonars_positions_quater<3>();
+    }
+
+    p2_at_subsystems()
+    {
+        set_sonars_positions();
+    }
 };
 
 template <typename Interface>
 class p2_at_device: p2_at_subsystems
 {
     class io_ctrl;
-
-    sonar_bar_t sonar_bar;
-    move_t move_ctrl;
     io_ctrl io;
 
     template <uint8_t cmd_num>
@@ -56,10 +120,13 @@ class p2_at_device: p2_at_subsystems
         return server_info;
     }
 
-    void parse_sip()
+    void parse_sip(const message<sip>& server_info)
     {
-        auto server_info = get_sip();
+        parse_sonars(server_info);
+    };
 
+    void parse_sonars(const message<sip>& server_info)
+    {
         auto message_body = at_key<message_body_key>(server_info);
         auto sonars       = at_key<sonar_measurements>(message_body);
 
@@ -68,22 +135,9 @@ class p2_at_device: p2_at_subsystems
             auto sonar_val = at_key<sonar_range>(current_sonar);
             at_key<subsystem::value>(sonar_bar[sonar_num]).set(p2_at_mobile_sim_length_unit(sonar_val));
         }
-
-        execute_cmd<0>();
     };
 
     void read_echo() { io.read_echo(); }
-
-    void start()
-    {
-        execute_cmd<0>(); read_echo();
-        execute_cmd<1>(); read_echo();
-        execute_cmd<2>(); read_echo();
-
-        execute_cmd<1>();
-
-        execute_cmd<4>((int16_t)1);
-    }
 
     void change_move_param(const bool& move, const int16_t& cur_vel, const int16_t& cur_r_vel)
     {
@@ -104,55 +158,29 @@ class p2_at_device: p2_at_subsystems
         current_r_vel.add_effector(move_binder);
     }
 
-    void bind_subsystems()
-    {
-        auto& sonar2 = at_key<subsystem::value>(sonar_bar[2]);
-        auto& sonar3 = at_key<subsystem::value>(sonar_bar[3]);
-        auto& sonar4 = at_key<subsystem::value>(sonar_bar[4]);
-        auto& sonar5 = at_key<subsystem::value>(sonar_bar[5]);
-
-        auto checker = [&, this]()
-        {
-            if(sonar2.get() < 300 || sonar3.get() < 500 || sonar4.get() < 500 || sonar5.get() < 300) {
-                this->execute_cmd<11>((int16_t)0);
-
-                if(sonar2.get() + sonar3.get() > sonar4.get() + sonar5.get())
-                    this->execute_cmd<21>((int16_t)(15));
-                else
-                    this->execute_cmd<21>((int16_t)(-15));
-            }
-            else {
-                this->execute_cmd<11>((int16_t)(at_key<subsystem::set_linear_vel> (this->move_ctrl).get()));
-                this->execute_cmd<21>((int16_t)(at_key<subsystem::set_angular_vel>(this->move_ctrl).get()));
-            }
-        };
-
-        sonar3.add_effector(checker);
-        sonar4.add_effector(checker);
-
-        sonar2.add_effector(checker);
-        sonar5.add_effector(checker);
-    }
-
 public:
-    p2_at_device(Interface& i):
-        io(i)
-    {
-        start();
-        std::thread t([this](){ while(true) this->parse_sip(); });
+    p2_at_device(Interface& i): io(i) {}
 
-        at_key<subsystem::move           >(move_ctrl).set(0);
-        at_key<subsystem::set_linear_vel >(move_ctrl).set(0);
-        at_key<subsystem::set_angular_vel>(move_ctrl).set(0);
+    void start()
+    {
+        execute_cmd<0>(); read_echo();
+        execute_cmd<1>(); read_echo();
+        execute_cmd<2>(); read_echo();
+
+        execute_cmd<1>();
+
+        execute_cmd<4 >((int16_t)1);
 
         bind_move();
-        bind_subsystems();
 
-        at_key<subsystem::set_linear_vel >(move_ctrl).set(1200);
-        at_key<subsystem::move           >(move_ctrl).set(1);
-
-        t.join();
+        while(true) {
+            parse_sip(get_sip());
+            execute_cmd<0>();
+        }
     }
+
+          p2_at_subsystems& get_subsystems()       { return *this; }
+    const p2_at_subsystems& get_subsystems() const { return *this; }
 };
 
 template <typename Interface>
