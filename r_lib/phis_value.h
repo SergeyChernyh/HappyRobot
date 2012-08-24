@@ -452,7 +452,7 @@ namespace robot { namespace dim
         template <typename V>
         phis_value_& operator=(const phis_value_<V, Dimension>& p)
         {
-            value = p.value;
+            value = p.get();
             return *this;
         }
 
