@@ -2,10 +2,13 @@
 #define __R_PARAMETER__
 
 #include <vector>
+#include <array>
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <limits>
 #include "phis_value.h"
+#include "metaprogramming/type_traits.h"
 
 namespace robot { namespace subsystem {
  
@@ -27,7 +30,45 @@ namespace robot { namespace subsystem {
         }
     };
 
-    template <typename T>
+    namespace details
+    {
+        template <typename T>
+        struct value_type_
+        {
+            using type = metaprogramming::value_type<T>;
+        };
+
+        template <typename T, typename D>
+        struct value_type_<phis_value<T, D>>
+        {
+            using type = metaprogramming::value_type<T>;
+        };
+
+        template <typename T, size_t C>
+        struct value_type_<std::array<T, C>>
+        {
+            using type = metaprogramming::value_type<T>;
+        };
+
+        template <typename T>
+        using value_type = typename value_type_<T>::type;
+    }
+
+    struct NA;
+    struct RO;
+    struct WO;
+    struct RW;
+
+    template
+    <
+        typename T,
+        typename Type = RW,
+        uint8_t READ_LEVEL = 0,
+        uint8_t WRITE_LEVEL = 0,
+        details::value_type<T> MIN  = std::numeric_limits<details::value_type<T>>::min(),
+        details::value_type<T> MAX  = std::numeric_limits<details::value_type<T>>::max(),
+        details::value_type<T> STEP = 0
+    >
     class parameter
     {
         T value;
@@ -43,10 +84,7 @@ namespace robot { namespace subsystem {
         parameter(const T& v): value(v) {}
 
         template <typename A>
-        void add_effector(const A& t)
-        {
-            act.add(t);
-        }
+        void add_effector(const A& t) { act.add(t); }
 
         template <typename A>
         void set(const A& v)
@@ -56,10 +94,7 @@ namespace robot { namespace subsystem {
             act();
         }
 
-        T get() const
-        {
-            return value;
-        }
+        T get() const { return value; }
     };
 
     template <typename ...Args>

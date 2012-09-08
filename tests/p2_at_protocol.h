@@ -191,12 +191,12 @@ namespace robot { namespace p2_at
             sonar_measurements,
             package_creation::repeat
             <
+                uint8_t,
                 pattern
                 <
                     pair<sonar_number, uint8_t>,
                     pair<sonar_range, uint16_t>
-                >,
-                uint8_t
+                >
             >
         >,
 

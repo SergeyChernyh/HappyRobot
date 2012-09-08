@@ -4,35 +4,15 @@
 #include <vector>
 #include <string>
 
-#include "package.h"
-#include "parameter.h"
+#include "protocol_definition_names.h"
 
 namespace robot { namespace p2_at
 {
-    template <typename Key, typename T>
-    using pair = metaprogramming::pair<Key, T>;
+    using namespace protocol_definition_names;
 
-    template <typename ...Args>
-    using pattern = package_creation::pattern<Args...>;
-
-    template <typename ...Args>
-    using pack = package_creation::package<Args...>;
-
-    using nothing = pattern<>;
-
-    template <typename T, T C>
-    using constant = std::integral_constant<T, C>;
-
-    using head_t = constant<uint16_t, 0xfbfa>;
-
-    constexpr uint16_t byte_swap(uint16_t p) { return ((p % 0x100) << 8) | (p / 0x100); }
-
-    template <typename T>
-    uint16_t chck_sum_calc(const package_creation::package<T>& pack)
+    inline uint16_t chck_sum_calc(const uint8_t *ptr, uint16_t n)
     {
-        const uint8_t *ptr = pack.get_data();
         uint16_t c = 0;
-        uint16_t n = (pack.data_size());
 
         while (n > 1) {
             c += (*(ptr)<<8) | *(ptr+1);
@@ -42,7 +22,7 @@ namespace robot { namespace p2_at
 
         if (n > 0)
             c ^= (uint16_t)*(ptr++);
-        return byte_swap(c);
+        return ((c % 0x100) << 8) | (c / 0x100);
     }
 
     /////// Message Format ////////////////////////////////
@@ -57,7 +37,7 @@ namespace robot { namespace p2_at
     using message_header =
     pattern
     <
-        pair<head_key      , head_t>,
+        pair<head_key      , constant<uint16_t, 0xfbfa>>,
         pair<byte_count_key, uint8_t>
     >;
 
@@ -93,19 +73,6 @@ namespace robot { namespace p2_at
         pair<arg_key, arg>
     >;
 
-    template <uint8_t cmd_num, typename T>
-    pack<message<command<cmd_num, T>>> cmd(const T& p)
-    {
-        using c = command<cmd_num, T>;
-        return pack<message<c>>(pack<c>(p).data_size() + sizeof(uint16_t), p, chck_sum_calc<c>(pack<c>(p)));
-    }
-
-    template <uint8_t cmd_num>
-    pack<message<command<cmd_num>>> cmd()
-    {
-        using c = command<cmd_num>;
-        return pack<message<c>>(pack<c>().data_size() + sizeof(uint16_t), chck_sum_calc<c>(pack<c>()));
-    }
     //////////// Sip //////////////////////////////////////
 
     struct status_key;
@@ -155,12 +122,12 @@ namespace robot { namespace p2_at
             sonar_measurements,
             package_creation::repeat
             <
+                uint8_t,
                 pattern
                 <
                     pair<sonar_number, uint8_t>,
                     pair<sonar_range, uint16_t>
-                >,
-                uint8_t
+                >
             >
         >,
 

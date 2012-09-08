@@ -15,10 +15,11 @@
 #include "metaprogramming/select.h"
 
 #include "sequence.h"
+#include "phis_value.h"
 
 namespace robot { namespace package_creation
 {
-    template <typename ValueType, typename SizeType>
+    template <typename SizeType, typename ValueType>
     class repeat: public std::vector<ValueType>
     {};
 
@@ -94,15 +95,26 @@ namespace robot { namespace package_creation
         template <typename T, size_t C> class size_c_tmp<false, std::array<T, C>>: public stl_compatible_container_size_c<std::array<T, C>> {};
 
         template <typename T, typename Size>
-        class size_c_tmp<false, repeat<T, Size>>
+        class size_c_tmp<false, repeat<Size, T>>
         {
-            using type = repeat<T, Size>;
+            using type = repeat<Size, T>;
         public:
             static size_t size(const type& t)
             {
                 return
                 size_c_tmp<true, Size>::size(t.size()) +
                 size_c_tmp<false, std::vector<T>>::size(t);
+            }
+        };
+
+        template <typename ValueType, typename Dimension>
+        class size_c_tmp<false, phis_value<ValueType, Dimension>>
+        {
+            using type = phis_value<ValueType, Dimension>;
+        public:
+            constexpr static size_t size(const type& t)
+            {
+                return size_c_tmp<true, ValueType>::size(t.get());
             }
         };
 
@@ -165,9 +177,9 @@ namespace robot { namespace package_creation
         template <typename T, size_t C> class serialize_tmp<false, std::array<T, C>>: public stl_compatible_container_serialize<std::array<T, C>> {};
 
         template <typename T, typename Size>
-        class serialize_tmp<false, repeat<T, Size>>
+        class serialize_tmp<false, repeat<Size, T>>
         {
-            using type = repeat<T, Size>;
+            using type = repeat<Size, T>;
         public:
             static void serialize(uint8_t *pos, const type& t)
             {
@@ -182,6 +194,24 @@ namespace robot { namespace package_creation
                 t.resize(s);
                 pos += size_c_tmp_wrapper<Size>::size(s);
                 serialize_tmp<false, std::vector<T>>::deserialize(pos, t);
+            }
+        };
+
+        template <typename ValueType, typename Dimension>
+        class serialize_tmp<false, phis_value<ValueType, Dimension>>
+        {
+            using type = phis_value<ValueType, Dimension>;
+        public:
+            static void serialize(uint8_t *pos, const type& t)
+            {
+                serialize_tmp<true, ValueType>::serialize(pos, t.get());
+            }
+
+            static void deserialize(const uint8_t *pos, type& t)
+            {
+                ValueType v;
+                serialize_tmp<true, ValueType>::deserialize(pos, v);
+                t.set(v);
             }
         };
 

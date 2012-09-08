@@ -4,8 +4,8 @@
 #include <thread>
 #include "system_si_metrics.h"
 #include "no_system_si_metrics.h"
-#include "sonar_subsystem.h"
-#include "move_subsystem.h"
+#include "subsystems/sonar_subsystem.h"
+#include "subsystems/move_subsystem.h"
 #include "p2_at_protocol.h"
 
 namespace robot { namespace p2_at
@@ -49,8 +49,8 @@ struct p2_at_subsystems: p2_at_metrics
                     */
 
         static_assert(quater <= 3, "quater <= 3");
-        int16_t x_factor = quater == 0 || quater == 1;
-        int16_t y_factor = quater == 0 || quater == 2;
+        int16_t x_factor = (quater == 0 || quater == 1) ? 1 : -1;
+        int16_t y_factor = (quater == 0 || quater == 2) ? 1 : -1;
 
         size_t base_sonar_num = quater * 4;
     //0
@@ -107,11 +107,40 @@ class p2_at_device: p2_at_subsystems
     class io_ctrl;
     io_ctrl io;
 
+    using chck_sum_t = metaprogramming::at_key<chck_sum_key, message<nothing>>;
+
+    using byte_count_t =
+    metaprogramming::at_key
+    <
+        byte_count_key,
+        metaprogramming::at_key
+        <
+            message_header_key,
+            message<nothing>
+        >
+    >;
+
+    template <typename Cmd>
+    static chck_sum_t chck_sum(const Cmd& c) { return chck_sum_calc(c.get_data(), c.data_size()); }
+
+    template <typename Cmd>
+    static byte_count_t cmd_byte_count(const Cmd& c) { return c.data_size() + sizeof(uint16_t); }
+
     template <uint8_t cmd_num>
-    void execute_cmd() { io.send_msg(cmd<cmd_num>()); }
+    void execute_cmd()
+    {
+        auto cmd = pack<command<cmd_num>>();
+        auto msg = pack<message<command<cmd_num>>>(cmd_byte_count(cmd), chck_sum(cmd));
+        io.send_msg(msg);
+    }
 
     template <uint8_t cmd_num, typename Arg>
-    void execute_cmd(const Arg& arg) { io.send_msg(cmd<cmd_num>(arg)); }
+    void execute_cmd(const Arg& arg)
+    {
+        auto cmd = pack<command<cmd_num, Arg>>(arg);
+        auto msg = pack<message<command<cmd_num, Arg>>>(cmd_byte_count(cmd), arg, chck_sum(cmd));
+        io.send_msg(msg);
+    }
 
     message<sip> get_sip()
     {
@@ -119,6 +148,8 @@ class p2_at_device: p2_at_subsystems
         io.recieve_msg(server_info);
         return server_info;
     }
+
+    void read_echo() { io.read_echo(); }
 
     void parse_sip(const message<sip>& server_info)
     {
@@ -136,8 +167,6 @@ class p2_at_device: p2_at_subsystems
             at_key<subsystem::value>(sonar_bar[sonar_num]).set(p2_at_mobile_sim_length_unit(sonar_val));
         }
     }
-
-    void read_echo() { io.read_echo(); }
 
     void change_move_param(const bool& move, const int16_t& cur_vel, const int16_t& cur_r_vel)
     {
@@ -168,7 +197,7 @@ public:
 
         execute_cmd<1>();
 
-        execute_cmd<4 >((int16_t)1);
+        execute_cmd<4>((int16_t)1);
 
         bind_move();
     }
