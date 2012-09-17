@@ -168,23 +168,20 @@ class p2_at_device: p2_at_subsystems
         }
     }
 
-    void change_move_param(const bool& move, const int16_t& cur_vel, const int16_t& cur_r_vel)
-    {
-        execute_cmd<11>((int16_t)(move ? cur_vel : 0));
-        execute_cmd<21>((int16_t)(move ? cur_r_vel : 0));
-    }
-
     void bind_move()
     {
-        auto& current_vel =   at_key<subsystem::set_linear_vel >(move_ctrl);
-        auto& current_r_vel = at_key<subsystem::set_angular_vel>(move_ctrl);
-        auto& do_move =       at_key<subsystem::move           >(move_ctrl);
+        auto& current_vel     = at_key<subsystem::set_linear_vel >(move_ctrl);
+        auto& current_r_vel   = at_key<subsystem::set_angular_vel>(move_ctrl);
+        auto& do_linear_move  = at_key<subsystem::linear_move    >(move_ctrl);
+        auto& do_angular_move = at_key<subsystem::angular_move   >(move_ctrl);
 
-        auto move_binder = [&, this]() { this->change_move_param(do_move.get(), current_vel.get(), current_r_vel.get()); };
+        auto linear_move_binder  = [&, this]() { this->execute_cmd<11>((int16_t)(do_linear_move.get() ? current_vel.get().get() : 0)); };
+        auto angular_move_binder = [&, this]() { this->execute_cmd<21>((int16_t)(do_angular_move.get() ? current_r_vel.get().get() : 0)); };
 
-        do_move.add_effector      (move_binder);
-        current_vel.add_effector  (move_binder);
-        current_r_vel.add_effector(move_binder);
+        do_linear_move.add_effector (linear_move_binder);
+        do_angular_move.add_effector(angular_move_binder);
+        current_vel.add_effector    (linear_move_binder);
+        current_r_vel.add_effector  (angular_move_binder);
     }
 
 public:

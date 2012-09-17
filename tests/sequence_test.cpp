@@ -48,6 +48,9 @@ int main(int argc, const char* argv[])
 {
     r rr;
 
+    r rrr(uint8_t(4), int(7), char(88), uint64_t(55), m::sequence<std::integral_constant<uint16_t, 100>, uint32_t>(uint32_t(77)));
+    assert(at_c<1>(at_c<8>(rrr)) == 77);
+
     at_c<1>(rr) = 5;
     assert(at_key<int>(rr) == 5);
 

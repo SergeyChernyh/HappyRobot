@@ -144,6 +144,12 @@ namespace robot { namespace metaprogramming
             using type = unspecified;
         };
 
+        template <>
+        struct serialize<>
+        {
+            using type = sequence<>;
+        };
+
         template <typename T, T C>
         struct serialize<std::integral_constant<T, C>>
         {

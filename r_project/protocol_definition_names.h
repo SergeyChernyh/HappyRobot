@@ -18,6 +18,11 @@ namespace robot { namespace protocol_definition_names
 
     template <typename T, T C>
     using constant = std::integral_constant<T, C>;
+
+    using any = package_creation::serialization::any;
+
+    template <typename SizeType, typename ValueType>
+    using repeat = package_creation::repeat<SizeType, ValueType>;
 }
 
 }

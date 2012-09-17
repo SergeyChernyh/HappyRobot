@@ -36,12 +36,14 @@ namespace robot { namespace subsystem {
 
     struct move_to_abs_xy;
     struct move_to_rel_xy;
+    struct move_to_rel_xy_from_current_pos;
 
     struct rotate_abs;
     struct rotate_rel;
     struct rotate_current;
 
-    struct move;
+    struct linear_move;
+    struct angular_move;
     struct stop;
 
     template <typename LengthUnit, typename AngleUnit, typename TimeUnit>
@@ -57,15 +59,15 @@ namespace robot { namespace subsystem {
         pair<rel_th, parameter<AngleUnit>>,
 
         pair<linear_vel, parameter<decltype(LengthUnit()/TimeUnit())>>,
-        pair<angular_vel, parameter<decltype(AngleUnit()/TimeUnit())>>,
-
         pair<linear_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
+
+        pair<angular_vel, parameter<decltype(AngleUnit()/TimeUnit())>>,
         pair<angular_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
 
         pair<max_linear_vel, parameter<decltype(LengthUnit()/TimeUnit())>>,
-        pair<max_angular_vel, parameter<decltype(AngleUnit()/TimeUnit())>>,
-
         pair<max_linear_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
+
+        pair<max_angular_vel, parameter<decltype(AngleUnit()/TimeUnit())>>,
         pair<max_angular_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
 
         pair<set_linear_vel, parameter<decltype(LengthUnit()/TimeUnit())>>,
@@ -74,12 +76,17 @@ namespace robot { namespace subsystem {
         pair<set_linear_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
         pair<set_angular_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
 
-        pair<rotate_abs, parameter<bool>>,
-        pair<rotate_rel, parameter<bool>>,
-        pair<rotate_current, parameter<bool>>,
+        pair<move_to_abs_xy                 , parameter<std::array<LengthUnit, 2>>>, // [0] - x, [1] - y
+        pair<move_to_rel_xy                 , parameter<std::array<LengthUnit, 2>>>,
+        pair<move_to_rel_xy_from_current_pos, parameter<std::array<LengthUnit, 2>>>,
 
-        pair<move, parameter<bool>>,
-        pair<stop, parameter<bool>>
+        pair<rotate_abs, parameter<AngleUnit>>,
+        pair<rotate_rel, parameter<AngleUnit>>,
+        pair<rotate_current, parameter<AngleUnit>>,
+
+        pair<linear_move , parameter<bool>>,
+        pair<angular_move, parameter<bool>>,
+        pair<stop        , parameter<bool>>
     >;
 }}
 

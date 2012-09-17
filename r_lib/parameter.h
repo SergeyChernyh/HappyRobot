@@ -38,20 +38,35 @@ namespace robot { namespace subsystem {
             using type = metaprogramming::value_type<T>;
         };
 
+        template <typename T>
+        using value_type = typename value_type_<T>::type;
+
         template <typename T, typename D>
         struct value_type_<phis_value<T, D>>
         {
-            using type = metaprogramming::value_type<T>;
+            using type = value_type<T>;
         };
 
         template <typename T, size_t C>
         struct value_type_<std::array<T, C>>
         {
-            using type = metaprogramming::value_type<T>;
+            using type = value_type<T>;
         };
 
         template <typename T>
-        using value_type = typename value_type_<T>::type;
+        struct data_type_
+        {
+            using type = T;
+        };
+
+        template <typename T, typename D>
+        struct data_type_<phis_value<T, D>>
+        {
+            using type = T;
+        };
+
+        template <typename T>
+        using data_type = typename data_type_<T>::type;
     }
 
     struct NA;

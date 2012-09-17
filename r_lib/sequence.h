@@ -16,6 +16,10 @@ namespace robot { namespace metaprogramming
             T value;
 
         public:
+            element_value() {}
+            element_value(const T&  v): value(v) {}
+            element_value(      T&& v): value(v) {}
+
             const T& get() const { return value; }
                   T& get()       { return value; }
         };
@@ -23,6 +27,10 @@ namespace robot { namespace metaprogramming
         template <typename T>
         struct nothing
         {
+            nothing() {}
+            nothing(const T&  v) {}
+            nothing(      T&& v) {}
+
             T get() const { return T(); };
         };
 
@@ -40,12 +48,20 @@ namespace robot { namespace metaprogramming
 
         template <typename T, typename ...Signature>
         struct element<T, Signature...>: public element_storage<T>
-        {};
+        {
+            element() {}
+            element(const T&  v): element_storage<T>(v) {}
+            element(      T&& v): element_storage<T>(v) {}
+        };
 
         template <typename Key, typename T, typename ...Signature>
         struct element<pair<Key, T>, Signature...>:
             public element<T, Signature...>
-        {};
+        {
+            element() {}
+            element(const T&  v): element<T, Signature...>(v) {}
+            element(      T&& v): element<T, Signature...>(v) {}
+        };
 
         template <>
         struct element<>
@@ -59,7 +75,43 @@ namespace robot { namespace metaprogramming
     struct sequence<Head, Tail...>:
         public sequence<Tail...>,
         public details::element<Head, Tail...>
-    {};
+    {
+        sequence() {}
+
+        template <typename ...Args>
+        sequence(const Args&... args):
+            sequence<Tail...>(args...)
+        {
+        }
+
+        template <typename ...Args>
+        sequence(const Head& head, const Args&... args):
+            sequence<Tail...>(args...),
+            details::element<Head, Tail...>(head)
+        {
+        }
+    };
+
+    template <typename HeadKey, typename Head, typename ...Tail>
+    struct sequence<pair<HeadKey, Head>, Tail...>:
+        public sequence<Tail...>,
+        public details::element<pair<HeadKey, Head>, Tail...>
+    {
+        sequence() {}
+
+        template <typename ...Args>
+        sequence(const Args&... args):
+            sequence<Tail...>(args...)
+        {
+        }
+
+        template <typename ...Args>
+        sequence(const Head& head, const Args&... args):
+            sequence<Tail...>(args...),
+            details::element<pair<HeadKey, Head>, Tail...>(head)
+        {
+        }
+    };
 }
 
 namespace element_access
