@@ -58,7 +58,6 @@ class console_client: common_protocol::read_buffer
         io.read(data_array, data_size);
     }
 
-    // HALTURA!!
     void parse_function_config()
     {
         using namespace common_protocol;
@@ -81,7 +80,6 @@ class console_client: common_protocol::read_buffer
         }
     }
 
-    // HALTURA!!
     size_t parse_parameter_config(uint16_t f_code, uint16_t f_num, const uint8_t* p_config_ptr)
     {
         using namespace common_protocol;
@@ -90,8 +88,6 @@ class console_client: common_protocol::read_buffer
         uint8_t p_code;
 
         package_creation::parser<pattern<uint8_t, uint8_t>>::parse(p_config_ptr, p_type, p_code);
-
-        std::cout << " f_code = " << f_code << " f_num = " << f_num << " p_type = " << (int)p_type << " p_code = " << (int)p_code << std::endl;
 
         size_t shift = sizeof(uint8_t) + sizeof(uint8_t);
 

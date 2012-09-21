@@ -36,14 +36,17 @@ class server: read_buffer
         msg_counter++;
     }
 
+    void send_function_list()
+    {
+        send_msg<0x1, 0x4>(functions.get_function_list());
+    }
+
     void send_config()
     {
         uint16_t f_code;
         uint16_t f_num;
 
         package_creation::parser<message_body<0x1, 0x5>>::parse(data_array, f_code, f_num);
-        std::cout << "config request: f_code = " << f_code << " f_num = " << f_num << std::endl;
-
         send_msg<0x1, 0x7>(f_code, f_num, functions[f_code][f_num].get_function_config());
     }
 
@@ -53,8 +56,6 @@ class server: read_buffer
         uint16_t f_num;
 
         package_creation::parser<pattern<uint16_t, uint16_t>>::parse(data_array, f_code, f_num);
-        std::cout << (int)data_array[sizeof(uint16_t) + sizeof(uint16_t)] << " change parameter value request: f_code = " << f_code << " f_num = " << f_num << std::endl;
-
         functions[f_code][f_num].change_parameters(data_array + sizeof(uint16_t) + sizeof(uint16_t));
     }
 
@@ -100,7 +101,7 @@ public:
                 switch(msg_type) {
                 case 0x0:
                 case 0x1:
-                case 0x2: send_msg<0x1, 0x4>(functions.get_function_list()); std::cout << "function list request\n"; return;
+                case 0x2: send_function_list(); return;
                 case 0x3:
                 case 0x4:
                 case 0x5: send_config(); return;
