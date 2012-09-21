@@ -84,7 +84,7 @@ int main(int argc, const char* argv[])
 {
     robot::tcp_test::TCPInterface tcp;
 
-    tcp.open();
+    tcp.client_connect();
 
     uint8_t buffer[0xff];
 
