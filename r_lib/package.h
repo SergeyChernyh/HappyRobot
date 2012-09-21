@@ -313,16 +313,6 @@ namespace robot { namespace package_creation
             serialize_element<F, pattern<Args...>>,
             serializer<pattern<Args...>, pattern<FArgs...>>
         {
-            template <typename ...Tail>
-            using my_friend =
-            serializer
-            <
-                pattern<pattern<std::integral_constant<F, U>, Args...>, Tail...>,
-                pattern<FArgs..., no_const_args<Tail...>>
-            >;
-
-            friend class my_friend;
-
         protected:
             using head = serialize_element<F, pattern<Args...>>;
             using tail = serializer<pattern<Args...>, pattern<FArgs...>>;
@@ -358,16 +348,6 @@ namespace robot { namespace package_creation
             serialize_element<F, pattern<Args...>>,
             serializer<pattern<Args...>, pattern<FArgs...>>
         {
-            template <typename ...Tail>
-            using my_friend =
-            serializer
-            <
-                pattern<pattern<F, Args...>, Tail...>,
-                pattern<F, FArgs..., no_const_args<Tail...>>
-            >;
-
-            friend class my_friend;
-
         protected:
             using head = serialize_element<F, pattern<Args...>>;
             using tail = serializer<pattern<Args...>, pattern<FArgs...>>;
