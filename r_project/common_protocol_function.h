@@ -59,6 +59,8 @@ namespace robot { namespace common_protocol
         T write_val;
         T read_val;
 
+        bool is_updated;
+
         using config_t =
         pattern
         <
@@ -99,7 +101,8 @@ namespace robot { namespace common_protocol
 
     public:
         parameter_rw(parameter_t& p, uint8_t param_code):
-            parameter(p)
+            parameter(p),
+            is_updated(false)
         {
             at_c<1>(config) = param_code;
             at_c<4>(config) = fields_count<subsystem::details::data_type<T>>::num(parameter.get());
@@ -112,6 +115,7 @@ namespace robot { namespace common_protocol
         void set_val(const uint8_t* src)
         {
             package_creation::parser<pattern<T>>::parse(src, write_val);
+            is_updated = true;
             // TODO check write_val (exc)
         }
 
@@ -123,8 +127,13 @@ namespace robot { namespace common_protocol
 
         void apply_change()
         {
-            parameter.set(write_val);
+            if(is_updated) {
+                parameter.set(write_val);
+                is_updated = false;
+            }
         }
+
+        void reset_change() { is_updated = false; }
     };
 
     template
@@ -175,10 +184,8 @@ namespace robot { namespace common_protocol
             return config;
         }
 
-        void apply_change()
-        {
-            //TODO exc
-        }
+        void apply_change() {}
+        void reset_change() {}
     };
 
     class function
