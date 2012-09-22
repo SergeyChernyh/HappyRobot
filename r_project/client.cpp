@@ -10,6 +10,9 @@ class virtual_console_io_node
 {
 public:
     virtual common_protocol::any read_value() = 0;
+    virtual void write_value(const uint8_t* src) = 0;
+
+    virtual size_t data_size() = 0;
 };
 
 template <typename T>
@@ -25,6 +28,16 @@ public:
             std::cin >> p;
         return v;
     }
+
+    void write_value(const uint8_t* src)
+    {
+        using namespace robot::common_protocol;
+        package_creation::parser<pattern<std::vector<T>>>::parse(src, v);
+        for(auto& p : v)
+            std::cout << p << std::endl;
+    }
+
+    size_t data_size() { return sizeof(T) * v.size(); } 
 };
 
 template <typename T>
@@ -42,6 +55,16 @@ public:
         }
         return v;
     }
+
+    void write_value(const uint8_t* src)
+    {
+        using namespace robot::common_protocol;
+        package_creation::parser<pattern<std::vector<T>>>::parse(src, v);
+        for(auto& p : v)
+            std::cout << (uint32_t)p << std::endl;
+    }
+
+    size_t data_size() { return sizeof(T) * v.size(); } 
 };
 
 template <> class console_io_node< int8_t> : public char_console_io_node< int8_t> { public: console_io_node(uint32_t size) : char_console_io_node< int8_t>(size) {} };
@@ -179,13 +202,63 @@ class console_client: common_protocol::read_buffer
         }
     }
 
+    void write_parameter(uint16_t f_code, uint16_t f_num, uint8_t p_code)
+    {
+        using namespace common_protocol;
+
+        using parameter_with_code_t = pattern<uint8_t, any>;
+        repeat<uint8_t, parameter_with_code_t> p;
+        p.push_back(parameter_with_code_t(p_code, input[f_code][f_num][p_code]->read_value())); 
+
+        send_msg<0x2, 0x8>(f_code, f_num, p);
+    }
+
+    void read_parameter(uint16_t f_code, uint16_t f_num, uint8_t p_code, uint8_t labels = 0) // TODO labels
+    {
+        using namespace common_protocol;
+
+        using value_request_list_t = metaprogramming::at_c<0x2, message_body<0x2, 0x0>>;
+        value_request_list_t value_request_list;
+
+        using num_with_label_mask_t = pattern<uint8_t, uint8_t>;
+
+        value_request_list.push_back(num_with_label_mask_t(p_code, labels));
+
+        send_msg<0x2, 0x0>(f_code, f_num, value_request_list);
+
+        read_known_package<0x2, 0x6>();
+        get_parameters();
+    }
+
+    void get_parameters()
+    {
+        using namespace common_protocol;
+
+        uint16_t f_code;
+        uint16_t f_num;
+        uint8_t param_count;
+
+        using values_head_t = pattern<uint16_t, uint16_t, uint8_t>;
+
+        package_creation::parser<values_head_t>::parse(data_array, f_code, f_num, param_count);
+
+        size_t shift = sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint8_t);
+
+        for(uint8_t i = 0; i < param_count; i++) {
+            uint8_t p_code = data_array[shift];
+            shift += sizeof(uint8_t);
+            auto& current_param = input[f_code][f_num][p_code];
+            current_param->write_value(data_array + shift);
+            shift += current_param->data_size();
+            shift += sizeof(uint8_t); //TODO pares labels
+        }
+    }
+
 public:
     console_client(Interface& i):
         io(i),
         msg_counter(0)
     {
-        using namespace common_protocol;
-
         get_function_list();
 
         while(true) {
@@ -200,11 +273,8 @@ public:
             std::cin >> p_code;
             std::cout << "enter parameter value: ";
 
-            using parameter_with_code_t = pattern<uint8_t, any>;
-            repeat<uint8_t, parameter_with_code_t> p;
-            p.push_back(parameter_with_code_t((uint8_t)p_code, input[f_code][f_num][p_code]->read_value())); 
-
-            send_msg<0x2, 0x8>(f_code, f_num, p);
+            write_parameter(f_code, f_num, (uint8_t)p_code);
+            read_parameter(f_code, f_num, (uint8_t)p_code);
         }
     }
 };

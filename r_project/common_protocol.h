@@ -72,7 +72,7 @@ namespace robot { namespace common_protocol
             message_type<0x3, pattern<uint16_t, uint16_t, repeat<uint8_t, pattern<uint8_t, uint8_t>>, uint32_t>>,
             message_type<0x4, pattern<uint16_t, uint16_t, repeat<uint8_t, uint8_t>>>,
             message_type<0x5, pattern<uint16_t, uint16_t, repeat<uint8_t, uint8_t>>>,
-            message_type<0x6, pattern<uint16_t, uint16_t, repeat<uint8_t, pattern<any, uint8_t, std::vector<any>>>>>,
+            message_type<0x6, pattern<uint16_t, uint16_t, repeat<uint8_t, pattern<uint8_t, any, uint8_t, std::vector<any>>>>>,
             message_type<0x7, pattern<uint16_t, uint16_t, repeat<uint8_t, pattern<uint8_t, uint8_t>>>>,
             message_type<0x8, pattern<uint16_t, uint16_t, repeat<uint8_t, pattern<uint8_t, any>>>>,
             message_type<0x9, nothing>,

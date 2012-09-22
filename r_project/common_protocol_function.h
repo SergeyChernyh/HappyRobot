@@ -247,7 +247,7 @@ namespace robot { namespace common_protocol
             values_t result;
             for(auto& v: v_req) {
                 auto p_num = at_c<0>(v);
-                result.push_back(values_t::value_type(parameters[p_num]->get_val(), uint8_t(0)));
+                result.push_back(values_t::value_type(uint8_t(p_num), parameters[p_num]->get_val(), uint8_t(0)));
             }
             return result;
         }
