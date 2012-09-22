@@ -6,30 +6,50 @@
 
 using namespace robot;
 
+class virtual_console_input_node
+{
+public:
+    virtual common_protocol::any read_value() = 0;
+};
+
+template <typename T>
+class console_input_node : public virtual_console_input_node
+{
+    std::vector<T> v;
+public:
+    console_input_node(uint32_t size) { v.resize(size); }
+
+    common_protocol::any read_value()
+    {
+        for(size_t i = 0; i < v.size(); i++)
+            std::cin >> v[i];
+        return v;
+    }
+};
+
+template <typename T>
+class char_console_input_node : public virtual_console_input_node
+{
+    std::vector<T> v;
+public:
+    char_console_input_node(uint32_t size) { v.resize(size); }
+
+    common_protocol::any read_value()
+    {
+        for(size_t i = 0; i < v.size(); i++) {
+            std::cin >> v[i];
+            v[i] -= '0';
+        }
+        return v;
+    }
+};
+
+template <> class console_input_node< int8_t> : public char_console_input_node< int8_t> { public: console_input_node(uint32_t size) : char_console_input_node< int8_t>(size) {} };
+template <> class console_input_node<uint8_t> : public char_console_input_node<uint8_t> { public: console_input_node(uint32_t size) : char_console_input_node<uint8_t>(size) {} };
+
 template <typename Interface>
 class console_client: common_protocol::read_buffer
 {
-    class virtual_console_input_node
-    {
-    public:
-        virtual common_protocol::any read_value() = 0;
-    };
-
-    template <typename T>
-    class console_input_node : public virtual_console_input_node
-    {
-        std::vector<T> v;
-    public:
-        console_input_node(uint32_t size) { v.resize(size); }
-
-        common_protocol::any read_value()
-        {
-            for(size_t i = 0; i < v.size(); i++)
-                std::cin >> v[i];
-            return v;
-        }
-    };
-
     using input_map_t = std::map<uint16_t, std::vector<std::vector<std::shared_ptr<virtual_console_input_node>>>>;
     input_map_t input;
 
