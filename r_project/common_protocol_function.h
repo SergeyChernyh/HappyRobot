@@ -196,6 +196,11 @@ namespace robot { namespace common_protocol
             void operator() (T& t) { func.add_parameter(t, num); num++; }
         };
 
+    using config_t = metaprogramming::at_c<0x2, message_body<0x1, 0x7>>;
+    using values_t = metaprogramming::at_c<0x2, message_body<0x2, 0x6>>;
+
+    using value_request_list_t = metaprogramming::at_c<0x2, message_body<0x2, 0x0>>;
+
     public:
         function() {}
 
@@ -222,7 +227,7 @@ namespace robot { namespace common_protocol
             
         }
 
-        repeat<uint8_t, any> get_function_config()
+        config_t get_function_config()
         {
             repeat<uint8_t, any> result;
             for(auto& p: parameters)
@@ -230,14 +235,12 @@ namespace robot { namespace common_protocol
             return result;
         }
 
-        repeat<uint8_t, pattern<any, uint8_t, std::vector<any>>> get_parameter_values(uint8_t* src)
+        values_t get_parameter_values(const value_request_list_t& v_req)
         {
-            uint8_t p_count = src[0];
-            ++src;
-            repeat<uint8_t, pattern<any, uint8_t, std::vector<any>>> result;
-            for(uint8_t i = 0; i < p_count; ++i) {
-                pattern<uint8_t, std::vector<any>> current;
-                result.push_back(pattern<any, uint8_t, std::vector<any>>(parameters[i]->get_val(), uint8_t(0)));
+            values_t result;
+            for(auto& v: v_req) {
+                auto p_num = at_c<0>(v);
+                result.push_back(values_t::value_type(parameters[p_num]->get_val(), uint8_t(0)));
             }
             return result;
         }
