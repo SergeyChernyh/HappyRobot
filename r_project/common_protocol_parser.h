@@ -50,6 +50,19 @@ class server: read_buffer
         send_msg<0x1, 0x7>(f_code, f_num, functions[f_code][f_num].get_function_config());
     }
 
+    void send_param_value()
+    {
+        using value_request_list_t = metaprogramming::at_c<0x2, message_body<0x2, 0x0>>;
+
+        uint16_t f_code;
+        uint16_t f_num;
+
+        value_request_list_t value_request_list;
+
+        package_creation::parser<message_body<0x2, 0x0>>::parse(data_array, f_code, f_num, value_request_list);
+        send_msg<0x2, 0x6>(f_code, f_num, functions[f_code][f_num].get_parameter_values(value_request_list));
+    }
+
     void change_param_value()
     {
         uint16_t f_code;
@@ -77,10 +90,6 @@ public:
             delay(1); // <----- TODO
             return;
         }
-
-        for(size_t i = 0; i < header_size; i++)
-            std::cout << std::hex << (int)header_data[i] << " ";
-        std::cout << std::endl;
 
         package_creation::parser<message_header_for_parse>::parse(header_data, msg_group, msg_type, msg_num, data_size);
 
@@ -111,7 +120,7 @@ public:
                 }
             case 0x2:
                 switch(msg_type) {
-                case 0x0:
+                case 0x0: send_param_value(); return;
                 case 0x1:
                 case 0x2:
                 case 0x3:
