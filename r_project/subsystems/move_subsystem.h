@@ -68,13 +68,13 @@ namespace robot { namespace subsystem {
         pair<max_linear_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
 
         pair<max_angular_vel, parameter<decltype(AngleUnit()/TimeUnit())>>,
-        pair<max_angular_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
+        pair<max_angular_acc, parameter<decltype(AngleUnit()/TimeUnit()/TimeUnit())>>,
 
         pair<set_linear_vel, parameter<decltype(LengthUnit()/TimeUnit())>>,
         pair<set_angular_vel, parameter<decltype(AngleUnit()/TimeUnit())>>,
 
         pair<set_linear_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
-        pair<set_angular_acc, parameter<decltype(LengthUnit()/TimeUnit()/TimeUnit())>>,
+        pair<set_angular_acc, parameter<decltype(AngleUnit()/TimeUnit()/TimeUnit())>>,
 
         pair<move_to_abs_xy                 , parameter<std::array<LengthUnit, 2>>>, // [0] - x, [1] - y
         pair<move_to_rel_xy                 , parameter<std::array<LengthUnit, 2>>>,
