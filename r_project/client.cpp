@@ -6,51 +6,51 @@
 
 using namespace robot;
 
-class virtual_console_input_node
+class virtual_console_io_node
 {
 public:
     virtual common_protocol::any read_value() = 0;
 };
 
 template <typename T>
-class console_input_node : public virtual_console_input_node
+class console_io_node : public virtual_console_io_node
 {
     std::vector<T> v;
 public:
-    console_input_node(uint32_t size) { v.resize(size); }
+    console_io_node(uint32_t size) { v.resize(size); }
 
     common_protocol::any read_value()
     {
-        for(size_t i = 0; i < v.size(); i++)
-            std::cin >> v[i];
+        for(auto& p : v)
+            std::cin >> p;
         return v;
     }
 };
 
 template <typename T>
-class char_console_input_node : public virtual_console_input_node
+class char_console_io_node : public virtual_console_io_node
 {
     std::vector<T> v;
 public:
-    char_console_input_node(uint32_t size) { v.resize(size); }
+    char_console_io_node(uint32_t size) { v.resize(size); }
 
     common_protocol::any read_value()
     {
-        for(size_t i = 0; i < v.size(); i++) {
-            std::cin >> v[i];
-            v[i] -= '0';
+        for(auto& p : v) {
+            std::cin >> p;
+            p -= '0';
         }
         return v;
     }
 };
 
-template <> class console_input_node< int8_t> : public char_console_input_node< int8_t> { public: console_input_node(uint32_t size) : char_console_input_node< int8_t>(size) {} };
-template <> class console_input_node<uint8_t> : public char_console_input_node<uint8_t> { public: console_input_node(uint32_t size) : char_console_input_node<uint8_t>(size) {} };
+template <> class console_io_node< int8_t> : public char_console_io_node< int8_t> { public: console_io_node(uint32_t size) : char_console_io_node< int8_t>(size) {} };
+template <> class console_io_node<uint8_t> : public char_console_io_node<uint8_t> { public: console_io_node(uint32_t size) : char_console_io_node<uint8_t>(size) {} };
 
 template <typename Interface>
 class console_client: common_protocol::read_buffer
 {
-    using input_map_t = std::map<uint16_t, std::vector<std::vector<std::shared_ptr<virtual_console_input_node>>>>;
+    using input_map_t = std::map<uint16_t, std::vector<std::vector<std::shared_ptr<virtual_console_io_node>>>>;
     input_map_t input;
 
     Interface& io;
@@ -158,7 +158,7 @@ class console_client: common_protocol::read_buffer
     template <typename T>
     size_t insert_input(uint16_t f_code, uint16_t f_num, uint32_t field_count)
     {
-        input[f_code][f_num].push_back(std::shared_ptr<virtual_console_input_node>(new console_input_node<T>(field_count)));
+        input[f_code][f_num].push_back(std::shared_ptr<virtual_console_io_node>(new console_io_node<T>(field_count)));
         return 3 * sizeof(T) + sizeof(uint16_t); // MIN, MAX, STEP, PHIS VALUE CODE ---> TODO
     }
 
