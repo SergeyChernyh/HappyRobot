@@ -8,63 +8,49 @@ using namespace robot;
 
 class virtual_console_io_node
 {
+    virtual void input_value (std::istream& is)       = 0;
+    virtual void output_value(std::ostream& os) const = 0;
 public:
-    virtual common_protocol::any read_value() = 0;
-    virtual void write_value(const uint8_t* src) = 0;
 
-    virtual size_t data_size() = 0;
+    virtual common_protocol::any get() = 0;
+
+    friend std::istream& operator >>(std::istream& is, virtual_console_io_node& v)
+    {
+        v.input_value(is);
+        return is;
+    }
+
+    friend std::ostream& operator <<(std::ostream& os, virtual_console_io_node& v)
+    {
+        v.output_value(os);
+        return os;
+    }
 };
 
 template <typename T>
 class console_io_node : public virtual_console_io_node
 {
     std::vector<T> v;
+
+    void input_value (std::istream& is)       { for(auto& p : v) is >> p; }
+    void output_value(std::ostream& os) const { for(auto& p : v) os << p; }
 public:
     console_io_node(uint32_t size) { v.resize(size); }
 
-    common_protocol::any read_value()
-    {
-        for(auto& p : v)
-            std::cin >> p;
-        return v;
-    }
-
-    void write_value(const uint8_t* src)
-    {
-        using namespace robot::common_protocol;
-        package_creation::parser<pattern<std::vector<T>>>::parse(src, v);
-        for(auto& p : v)
-            std::cout << p << std::endl;
-    }
-
-    size_t data_size() { return sizeof(T) * v.size(); } 
+    common_protocol::any get() { return v; }
 };
 
 template <typename T>
 class char_console_io_node : public virtual_console_io_node
 {
     std::vector<T> v;
+
+    void input_value (std::istream& is)       { for(auto& p : v) { is >> p; p -= '0'; } }
+    void output_value(std::ostream& os) const { for(auto& p : v)   os << p; } // TODO
 public:
     char_console_io_node(uint32_t size) { v.resize(size); }
 
-    common_protocol::any read_value()
-    {
-        for(auto& p : v) {
-            std::cin >> p;
-            p -= '0';
-        }
-        return v;
-    }
-
-    void write_value(const uint8_t* src)
-    {
-        using namespace robot::common_protocol;
-        package_creation::parser<pattern<std::vector<T>>>::parse(src, v);
-        for(auto& p : v)
-            std::cout << (uint32_t)p << std::endl;
-    }
-
-    size_t data_size() { return sizeof(T) * v.size(); } 
+    common_protocol::any get() { return v; }
 };
 
 template <> class console_io_node< int8_t> : public char_console_io_node< int8_t> { public: console_io_node(uint32_t size) : char_console_io_node< int8_t>(size) {} };
@@ -96,7 +82,7 @@ class console_client: common_protocol::read_buffer
         uint32_t msg_num;
         uint32_t data_size;
         if(io.read(header_data, header_size) != header_size)
-            return;
+            return; // TODO exc?
         package_creation::parser<common_protocol::message_header<MsgGroup, MsgType>>::parse(header_data, msg_num, data_size);
         io.read(data_array, data_size);
     }
@@ -208,7 +194,8 @@ class console_client: common_protocol::read_buffer
 
         using parameter_with_code_t = pattern<uint8_t, any>;
         repeat<uint8_t, parameter_with_code_t> p;
-        p.push_back(parameter_with_code_t(p_code, input[f_code][f_num][p_code]->read_value())); 
+
+        p.push_back(parameter_with_code_t(p_code, input[f_code][f_num][p_code]->get())); 
 
         send_msg<0x2, 0x8>(f_code, f_num, p);
     }
@@ -247,10 +234,10 @@ class console_client: common_protocol::read_buffer
         for(uint8_t i = 0; i < param_count; i++) {
             uint8_t p_code = data_array[shift];
             shift += sizeof(uint8_t);
-            auto& current_param = input[f_code][f_num][p_code];
-            current_param->write_value(data_array + shift);
-            shift += current_param->data_size();
-            shift += sizeof(uint8_t); //TODO pares labels
+            auto current_param = input[f_code][f_num][p_code]->get();
+            package_creation::parser<pattern<decltype(current_param)>>::parse(data_array + shift, current_param);
+            shift += current_param.size_c(); // TODO
+            shift += sizeof(uint8_t); //TODO parse labels
         }
     }
 
@@ -272,6 +259,9 @@ public:
             std::cout << "enter parameter code: ";
             std::cin >> p_code;
             std::cout << "enter parameter value: ";
+
+            std::cin >> (*input[f_code][f_num][p_code]);
+            //std::cout << (*input[f_code][f_num][p_code]);
 
             write_parameter(f_code, f_num, (uint8_t)p_code);
             read_parameter(f_code, f_num, (uint8_t)p_code);
