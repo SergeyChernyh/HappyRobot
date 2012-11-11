@@ -5,7 +5,7 @@
 #include "common_protocol_parser.h"
 #include "common_protocol_parameter_map.h"
 
-using namespace robot;
+namespace robot {
 
 template <typename Interface>
 class console_client: common_protocol::read_buffer
@@ -219,5 +219,7 @@ public:
         }
     }
 };
+
+}
 
 #endif

@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 
-using namespace robot;
+namespace robot {
 
 class virtual_console_io_node
 {
@@ -56,4 +56,5 @@ public:
 template <> class console_io_node< int8_t> : public char_console_io_node< int8_t> { public: console_io_node(uint32_t size) : char_console_io_node< int8_t>(size) {} };
 template <> class console_io_node<uint8_t> : public char_console_io_node<uint8_t> { public: console_io_node(uint32_t size) : char_console_io_node<uint8_t>(size) {} };
 
+}
 #endif

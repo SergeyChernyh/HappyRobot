@@ -5,7 +5,7 @@
 #include <vector>
 #include "sequence.h"
 
-using namespace robot;
+namespace robot {
 
 struct constant_mismatch_error: public std::logic_error
 {
@@ -59,4 +59,5 @@ inline std::istream& operator>>(enable_if_const<Head>& is, metaprogramming::sequ
     return is;
 }
 
+}
 #endif

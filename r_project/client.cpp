@@ -3,6 +3,7 @@
 
 int main(int argc, const char* argv[])
 {
+    using namespace robot;
     using namespace subsystem;
 
     tcp_test::TCPInterface tcp(5200);
