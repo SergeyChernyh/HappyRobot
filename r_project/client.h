@@ -10,7 +10,19 @@ namespace robot {
 template <typename Interface>
 class console_client: common_protocol::read_buffer
 {
-    using input_map_t = std::map<uint16_t, std::vector<std::vector<std::shared_ptr<virtual_console_io_node>>>>;
+    using input_map_t =
+    std::map // function types
+    <
+        uint16_t,   // function type
+        std::vector // same type functions
+        <
+            std::vector // function parameter
+            <
+                parameter_map
+            >
+        >
+    >;
+
     input_map_t input;
 
     Interface& io;
@@ -84,29 +96,31 @@ class console_client: common_protocol::read_buffer
 
         shift += sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t);
 
+        const uint8_t* ptr = p_config_ptr + shift;
+
         if(uint8_t(1 << 1) & value_flags) {
             if(field_size == 3)
-                shift += insert_input<float>(f_code, f_num, field_count);
+                shift += insert_input<float>(f_code, f_num, field_count, ptr);
             else if(field_size == 0xff)
-                shift += insert_input<double>(f_code, f_num, field_count);
+                shift += insert_input<double>(f_code, f_num, field_count, ptr);
             else ; //TODO exc
         }
         else {
             if(uint8_t(1 << 0) & value_flags) {
                 switch(field_size) {
-                case 0: shift += insert_input<int8_t >(f_code, f_num, field_count); break;
-                case 1: shift += insert_input<int16_t>(f_code, f_num, field_count); break;
-                case 2: shift += insert_input<int32_t>(f_code, f_num, field_count); break;
-                case 3: shift += insert_input<int64_t>(f_code, f_num, field_count); break;
+                case 0: shift += insert_input<int8_t >(f_code, f_num, field_count, ptr); break;
+                case 1: shift += insert_input<int16_t>(f_code, f_num, field_count, ptr); break;
+                case 2: shift += insert_input<int32_t>(f_code, f_num, field_count, ptr); break;
+                case 3: shift += insert_input<int64_t>(f_code, f_num, field_count, ptr); break;
                 default:; //TODO exc
                 }
             }
             else {
                 switch(field_size) {
-                case 0: shift += insert_input<uint8_t >(f_code, f_num, field_count); break;
-                case 1: shift += insert_input<uint16_t>(f_code, f_num, field_count); break;
-                case 2: shift += insert_input<uint32_t>(f_code, f_num, field_count); break;
-                case 3: shift += insert_input<uint64_t>(f_code, f_num, field_count); break;
+                case 0: shift += insert_input<uint8_t >(f_code, f_num, field_count, ptr); break;
+                case 1: shift += insert_input<uint16_t>(f_code, f_num, field_count, ptr); break;
+                case 2: shift += insert_input<uint32_t>(f_code, f_num, field_count, ptr); break;
+                case 3: shift += insert_input<uint64_t>(f_code, f_num, field_count, ptr); break;
                 default:; //TODO exc
                 }
             }
@@ -116,9 +130,17 @@ class console_client: common_protocol::read_buffer
     }
 
     template <typename T>
-    size_t insert_input(uint16_t f_code, uint16_t f_num, uint32_t field_count)
+    size_t insert_input(uint16_t f_code, uint16_t f_num, uint32_t field_count, const uint8_t* ptr)
     {
-        input[f_code][f_num].push_back(std::shared_ptr<virtual_console_io_node>(new console_io_node<T>(field_count)));
+        using namespace common_protocol;
+
+        T min, max, step;
+
+        uint16_t phis_dimension;
+
+        package_creation::parser<pattern<T, T, T, uint16_t>>::parse(ptr, max, min, step, phis_dimension);
+
+        input[f_code][f_num].push_back(parameter_map(field_count, max, min, step, phis_dimension));
         return 3 * sizeof(T) + sizeof(uint16_t); // MIN, MAX, STEP, PHIS VALUE CODE ---> TODO
     }
 
@@ -146,7 +168,7 @@ class console_client: common_protocol::read_buffer
         using parameter_with_code_t = pattern<uint8_t, any>;
         repeat<uint8_t, parameter_with_code_t> p;
 
-        p.push_back(parameter_with_code_t(p_code, input[f_code][f_num][p_code]->get())); 
+        p.push_back(parameter_with_code_t(p_code, input[f_code][f_num][p_code].get())); 
 
         send_msg<0x2, 0x8>(f_code, f_num, p);
     }
@@ -185,7 +207,7 @@ class console_client: common_protocol::read_buffer
         for(uint8_t i = 0; i < param_count; i++) {
             uint8_t p_code = data_array[shift];
             shift += sizeof(uint8_t);
-            auto current_param = input[f_code][f_num][p_code]->get();
+            auto current_param = input[f_code][f_num][p_code].get();
             package_creation::parser<pattern<decltype(current_param)>>::parse(data_array + shift, current_param);
             shift += current_param.size_c(); // TODO
             shift += sizeof(uint8_t); //TODO parse labels
@@ -211,8 +233,8 @@ public:
             std::cin >> p_code;
             std::cout << "enter parameter value: ";
 
-            std::cin >> (*input[f_code][f_num][p_code]);
-            //std::cout << (*input[f_code][f_num][p_code]);
+            std::cin >> input[f_code][f_num][p_code];
+            //std::cout << input[f_code][f_num][p_code];
 
             write_parameter(f_code, f_num, (uint8_t)p_code);
             read_parameter(f_code, f_num, (uint8_t)p_code);

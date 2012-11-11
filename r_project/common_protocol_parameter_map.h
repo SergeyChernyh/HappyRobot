@@ -8,9 +8,9 @@ namespace robot {
 
 class virtual_console_io_node
 {
+public:
     virtual void input_value (std::istream& is)       = 0;
     virtual void output_value(std::ostream& os) const = 0;
-public:
 
     virtual common_protocol::any get() = 0;
 
@@ -25,6 +25,8 @@ public:
         v.output_value(os);
         return os;
     }
+
+    virtual ~virtual_console_io_node(){}
 };
 
 template <typename T>
@@ -56,5 +58,31 @@ public:
 template <> class console_io_node< int8_t> : public char_console_io_node< int8_t> { public: console_io_node(uint32_t size) : char_console_io_node< int8_t>(size) {} };
 template <> class console_io_node<uint8_t> : public char_console_io_node<uint8_t> { public: console_io_node(uint32_t size) : char_console_io_node<uint8_t>(size) {} };
 
+// TODO
+class parameter_map
+{
+    std::shared_ptr<virtual_console_io_node> io;
+public:
+    template <typename T>
+    parameter_map(uint32_t field_count, T max, T min, T step, uint16_t):
+        io(new console_io_node<T>(field_count))
+    {}
+
+    common_protocol::any get() { return io->get(); }
+
+    friend std::istream& operator >>(std::istream& is, parameter_map& v)
+    {
+        v.io->input_value(is);
+        return is;
+    }
+
+    friend std::ostream& operator <<(std::ostream& os, parameter_map& v)
+    {
+        v.io->output_value(os);
+        return os;
+    }
+};
+
 }
+
 #endif

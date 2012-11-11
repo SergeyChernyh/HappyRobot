@@ -94,7 +94,7 @@ namespace robot { namespace common_protocol
             constant<value_t, MAX>,
             constant<value_t, MIN>,
             constant<value_t, STEP>,
-            constant<uint16_t, 0> //TODO
+            constant<uint16_t, 0> //TODO add labels
         >;
 
         config_t config;
