@@ -102,7 +102,6 @@ public:
             return;
 
         is_ready = true;
-        std::cout << "ready " << this << std::endl;
     }
 
     uint32_t write(const char* write_buffer, int length)
@@ -121,7 +120,6 @@ public:
     uint32_t read (uint8_t* read_buffer,  int length)
     {
         if(!is_ready) {
-            std::cout << "not ready " << this << std::endl;
             return -2;
         }
 
