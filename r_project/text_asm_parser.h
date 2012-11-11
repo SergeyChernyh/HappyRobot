@@ -59,5 +59,29 @@ inline std::istream& operator>>(enable_if_const<Head>& is, metaprogramming::sequ
     return is;
 }
 
+template <typename T, char Separator = ','>
+struct value_list: public std::vector<T> {};
+
+template <typename T, char Separator>
+inline std::istream& operator>>(std::istream& is, value_list<T, Separator>& v)
+{
+    T t;
+    char c;
+
+    while(is) {
+        is >> t;
+
+        v.push_back(t);
+
+        is >> c;
+        if (c != Separator) {
+            is.unget();
+            return is;
+        }
+    }
+
+    return is;
+}
+
 }
 #endif
