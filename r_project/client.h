@@ -141,7 +141,7 @@ class console_client: common_protocol::read_buffer
         package_creation::parser<pattern<T, T, T, uint16_t>>::parse(ptr, max, min, step, phis_dimension);
 
         input[f_code][f_num].push_back(parameter_map(field_count, max, min, step, phis_dimension));
-        return 3 * sizeof(T) + sizeof(uint16_t); // MIN, MAX, STEP, PHIS VALUE CODE ---> TODO
+        return 3 * sizeof(T) + sizeof(uint16_t);
     }
 
     void get_function_list()
@@ -161,30 +161,24 @@ class console_client: common_protocol::read_buffer
         }
     }
 
-    void write_parameter(uint16_t f_code, uint16_t f_num, uint8_t p_code)
+    void write(uint16_t f_code, uint16_t f_num, const std::vector<uint8_t>& p_code)
     {
         using namespace common_protocol;
 
         using parameter_with_code_t = pattern<uint8_t, any>;
         repeat<uint8_t, parameter_with_code_t> p;
 
-        p.push_back(parameter_with_code_t(p_code, input[f_code][f_num][p_code].get())); 
+        for(auto code : p_code)
+            p.push_back(parameter_with_code_t(code, input[f_code][f_num][code].get())); 
 
         send_msg<0x2, 0x8>(f_code, f_num, p);
     }
 
-    void read_parameter(uint16_t f_code, uint16_t f_num, uint8_t p_code, uint8_t labels = 0) // TODO labels
+    void read(uint16_t f_code, uint16_t f_num, const metaprogramming::at_c<0x2, common_protocol::message_body<0x2, 0x0>>& request)
     {
         using namespace common_protocol;
 
-        using value_request_list_t = metaprogramming::at_c<0x2, message_body<0x2, 0x0>>;
-        value_request_list_t value_request_list;
-
-        using num_with_label_mask_t = pattern<uint8_t, uint8_t>;
-
-        value_request_list.push_back(num_with_label_mask_t(p_code, labels));
-
-        send_msg<0x2, 0x0>(f_code, f_num, value_request_list);
+        send_msg<0x2, 0x0>(f_code, f_num, request);
 
         read_known_package<0x2, 0x6>();
         get_parameters();
@@ -234,10 +228,16 @@ public:
             std::cout << "enter parameter value: ";
 
             std::cin >> input[f_code][f_num][p_code];
-            //std::cout << input[f_code][f_num][p_code];
 
-            write_parameter(f_code, f_num, (uint8_t)p_code);
-            read_parameter(f_code, f_num, (uint8_t)p_code);
+            using read_reguest = metaprogramming::at_c<0x2, common_protocol::message_body<0x2, 0x0>>;
+
+            read_reguest req;
+            req.push_back(common_protocol::pattern<uint8_t, uint8_t>((uint8_t)p_code, (uint8_t)0));
+
+            write(f_code, f_num, std::vector<uint8_t>(1, p_code));
+            read(f_code, f_num, req);
+
+            std::cout << input[f_code][f_num][p_code] << std::endl;
         }
     }
 };
