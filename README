@@ -2,8 +2,8 @@
 
 gcc 4.7 (mingw 4.7)
 
-Windows: g++     -Wall -Werror -std=gnu++11 -I. -D__WINDOWS__ tests/test_name.cpp -lws2_32
-Linux:   g++-4.7 -Wall -Werror -std=gnu++11 -I.               tests/test_name.cpp
+Windows: g++ -Wall -Werror -std=gnu++11 -I. -D__WINDOWS__ tests/test_name.cpp -lws2_32
+Linux:   g++ -Wall -Werror -std=gnu++11 -I.               tests/test_name.cpp
 
 Некоторые тесты могут также собираться clang 3.1
 
@@ -11,10 +11,10 @@ Linux:   g++-4.7 -Wall -Werror -std=gnu++11 -I.               tests/test_name.cp
 
 Сборка сервера и клиента:
 
-g++-4.7 -pthread -Wall -Werror -std=gnu++11 -Ir_lib -Ir_project -Ir_project/subsystems r_project/robot.cpp
+g++ -pthread -Wall -Werror -std=gnu++11 -Ir_lib -Ir_project -Ir_project/subsystems r_project/robot.cpp
 mv ./a.out server
 
-g++-4.7 -pthread -Wall -Werror -std=gnu++11 -Ir_lib -Ir_project -Ir_project/subsystems r_project/client.cpp
+g++ -pthread -Wall -Werror -std=gnu++11 -Ir_lib -Ir_project -Ir_project/subsystems r_project/client.cpp
 mv ./a.out client
 
 Под Windows - аналогично + -D__WINDOWS__ + -lws2_32
