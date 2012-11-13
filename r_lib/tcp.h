@@ -13,7 +13,6 @@
 
 namespace robot
 {
-
 // only for tests!!!
 namespace tcp_test
 {
@@ -21,7 +20,6 @@ namespace tcp_test
 class TCPInterface
 {
 #ifdef __WINDOWS__
-    uint16_t wsa_version;
     typedef SOCKET socket_t;
 #else
     typedef int socket_t;
@@ -51,7 +49,6 @@ class TCPInterface
 public:
     TCPInterface(uint16_t p = 8101):
 #ifdef __WINDOWS__
-        wsa_version(0x0202),
         ip_addr(inet_addr("127.0.0.1")),
 #else
         ip_addr(htonl(INADDR_LOOPBACK)),
@@ -63,7 +60,7 @@ public:
     {
 #ifdef __WINDOWS__
         WSAData dt;
-        WSAStartup(wsa_version,&dt);
+        WSAStartup(0x0202, &dt);
 #endif
         tcp_connect();
         is_ready = true;
@@ -83,7 +80,7 @@ public:
 
         listen(listener_socket, 1);
 
-        io_socket = accept(listener_socket, NULL, NULL);
+        io_socket = accept(listener_socket, 0, 0);
         if(io_socket < 0)
             return;
 
