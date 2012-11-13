@@ -87,7 +87,7 @@ public:
         uint32_t data_size;
 
         if(io.read(header_data, header_size) != header_size) {
-            delay(1); // <----- TODO
+            // <----- TODO exc
             return;
         }
 

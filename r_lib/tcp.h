@@ -14,20 +14,6 @@
 namespace robot
 {
 
-#ifdef __WINDOWS__
-inline void delay( unsigned long ms )
-{
-    Sleep(ms);
-}
-#else
-#include <unistd.h>
-
-inline void delay( unsigned long ms )
-{
-    usleep(ms * 1000);
-}
-#endif
-
 // only for tests!!!
 namespace tcp_test
 {
