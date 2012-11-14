@@ -19,11 +19,7 @@ namespace tcp_test
 
 class TCPInterface
 {
-#ifdef __WINDOWS__
-    typedef SOCKET socket_t;
-#else
     typedef int socket_t;
-#endif
     uint32_t ip_addr;
     uint16_t port;
     bool is_ready;
@@ -48,11 +44,7 @@ class TCPInterface
 
 public:
     TCPInterface(uint16_t p = 8101):
-#ifdef __WINDOWS__
-        ip_addr(inet_addr("127.0.0.1")),
-#else
         ip_addr(htonl(INADDR_LOOPBACK)),
-#endif
         port(p),
         is_ready(false)
     {}
