@@ -30,7 +30,7 @@ int main()
     std::istringstream input;
 
     while(std::cin && !std::cin.eof()) {
-        std::cout << ">";
+        std::cout << "Enter command" << "\n" << "command format 'command_name [function_number] [parameter_number] [parameter_value]'" << "\n" << "\n" << ">" ;
         std::cin.getline(buf, buf_size);
         std::string s(buf, buf_size);
 
@@ -43,7 +43,7 @@ int main()
 
             input >> cmd_name;
 
-            if(cmd_name == "write")
+            if((cmd_name == "write") or (cmd_name == "read"))
                 input >> tmp;
             else
                 std::cout << "unknown command\n";
