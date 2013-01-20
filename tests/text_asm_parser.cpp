@@ -28,6 +28,8 @@ int main()
     char buf[buf_size];
 
     std::istringstream input;
+    std::ofstream ofs("outfile.txt", std::ios::out|std::ios::app);
+	std::ifstream ifs("outfile.txt", std::ios::in);
 
     while(std::cin && !std::cin.eof()) {
         std::cout << "Enter command" << "\n" << "command format 'command_name [function_number] [parameter_number] [parameter_value]'" << "\n" << "\n" << ">" ;
@@ -43,8 +45,18 @@ int main()
 
             input >> cmd_name;
 
-            if((cmd_name == "write") or (cmd_name == "read"))
+            if((cmd_name == "write") or (cmd_name == "read") or (cmd_name == "set"))
+            {
                 input >> tmp;
+                
+                std::cout << "success\n";
+    			ofs <<buf << "\n" << "\n";
+            }
+            else if (cmd_name == "load")
+			{	
+				while((ifs.good()) )
+				    std::cout<<(char)ifs.get();
+			}
             else
                 std::cout << "unknown command\n";
         }
@@ -54,6 +66,7 @@ int main()
     }
 
     std::cout << "line is too long\n";
-
+    ofs.close();
+	ifs.close();
     return 0;
 }
