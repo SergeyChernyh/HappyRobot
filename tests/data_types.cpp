@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <iostream>
 #include "data_types.h"
+#include "dimension.h"
 
 using namespace robot;
 
@@ -45,10 +46,10 @@ int main()
 
     {
 
-    static_assert(std::is_same<type_at_c<0, sequence_0_t>, int>::value, "0");
-    static_assert(std::is_same<type_at_c<1, sequence_0_t>, char>::value, "1");
-    static_assert(std::is_same<type_at_c<2, sequence_0_t>, sequence<short, pair<long_key, long>>>::value, "2");
-    static_assert(std::is_same<type_at_c<3, sequence_0_t>, int*>::value, "3");
+    static_assert(std::is_same<value_type_at_c<0, sequence_0_t>, int>::value, "0");
+    static_assert(std::is_same<value_type_at_c<1, sequence_0_t>, char>::value, "1");
+    static_assert(std::is_same<value_type_at_c<2, sequence_0_t>, sequence<short, pair<long_key, long>>>::value, "2");
+    static_assert(std::is_same<value_type_at_c<3, sequence_0_t>, int*>::value, "3");
 
     sequence_0_t sequence_0;
     const sequence_0_t& sequence_0_o = sequence_0;
@@ -92,7 +93,7 @@ int main()
     assert(get<1>(sequence_101) == 44);
     assert(get<2>(get<3>(sequence_101)) == 99);
 
-    static_assert(std::is_same<type_at_c<0, sequence_10_t>, const char>::value, "0");
+    static_assert(std::is_same<value_type_at_c<0, sequence_10_t>, const char>::value, "0");
 
     int r0 = 0;
     char r1 = 1;
@@ -245,15 +246,43 @@ int main()
     metre<int> l = 10;
     second<int> t = 2;
 
-    dec_factor<-2, metre<int>> lsm = parameter_cast<dec_factor<-2, metre<int>>>(l);
+    using sm = dec_factor<-2, metre<int>>;
+    using ms = dec_factor<-1, second<int>>;
+
+    sm lsm = phis_cast<sm>(l);
+
+    assert(lsm == l);
 
     auto v = l / t;
 
     auto vmmsec = lsm / t;
 
+    auto vsmmsec = phis_cast<decltype(sm() / ms())>(l / t);
+
+    auto v1 = phis_cast<decltype(v)>(vmmsec);
+
+    assert(v1.get_value() == 5);
+    assert(vsmmsec.get_value() == 50);
+
     assert(lsm.get_value() == 1000);
     assert(v.get_value() == 5);
     assert(vmmsec.get_value() == 500);
+
+    int a = 77;
+
+    size_calc_stream size;
+
+    size << a;
+
+    binary_buffer _buf_(size.get());
+
+    binary_ostream _os_(_buf_);
+    binary_istream _is_(_buf_);
+
+    _os_ << a;
+    _is_ >> l;
+
+    assert(l.get_value() == a);
 
     return 0;
 }
