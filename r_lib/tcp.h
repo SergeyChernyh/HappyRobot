@@ -13,6 +13,77 @@
 
 namespace robot
 {
+
+class tcp_socket
+{
+    int io_socket;
+public:
+    tcp_socket(int s): io_socket(s) {}
+
+    int write(const char* write_buffer, size_t size)
+    {
+        return send(io_socket, write_buffer, size, 0);
+    }
+
+    int read (char* read_buffer, size_t size)
+    {
+        int res = recv(io_socket, read_buffer, size, MSG_WAITALL);
+        std::cout << " recieved " << res << " size = " << size << std::endl;
+        return res;//recv(io_socket, read_buffer, size, MSG_WAITALL);
+    }
+};
+
+inline void tcp_init()
+{
+#ifdef __WINDOWS
+    // magic
+    WSAData dt;
+    WSAStartup(0x0202, &dt);
+#endif
+}
+
+inline tcp_socket tcp_client(uint32_t ip, uint16_t port)
+{
+    tcp_init();
+    int io_socket = socket(AF_INET, SOCK_STREAM, 0);
+
+    sockaddr_in addr;
+
+    addr.sin_addr.s_addr = htonl(ip);
+    addr.sin_port = htons(port);
+    addr.sin_family = AF_INET;
+
+    int res = connect(io_socket, (sockaddr*)&addr, sizeof(addr));
+    if(res)
+        ; // TODO exc
+
+    return tcp_socket(io_socket);
+}
+
+inline tcp_socket wait_for_tcp_connection(uint32_t ip, uint16_t port)
+{
+    int listener_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if(listener_socket < 0)
+        ; // TODO exc
+
+    sockaddr_in addr;
+
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if(bind(listener_socket, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+        ; // TODO exc
+
+    listen(listener_socket, 1);
+
+    int io_socket = accept(listener_socket, 0, 0);
+    if(io_socket < 0)
+        ; // TODO exc
+
+    return tcp_socket(io_socket);
+}
+
 // only for tests!!!
 namespace tcp_test
 {
