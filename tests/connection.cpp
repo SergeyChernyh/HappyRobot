@@ -38,15 +38,17 @@ public:
 
 int main()
 {
-    connection::connection p = test_socket();
+    connection p = test_socket();
 
-    p.write(1, 3 , char(0x22), 8ull);
+    sequence<int, int, char, uint64_t> seq(1, 2, 0x22, 8);
 
-    metaprogramming::sequence<uint64_t, uint64_t, uint8_t> q;
+    p.write(seq);
+
+    sequence<uint64_t, uint64_t, uint8_t> q;
 
     p.read(q);
 
-    std::cout << at_c<0>(q) << " " << at_c<1>(q) << " " << (uint32_t)at_c<2>(q) << std::endl;
+    std::cout << get<0>(q) << " " << get<1>(q) << " " << (uint32_t)get<2>(q) << std::endl;
 
     return 0;
 }

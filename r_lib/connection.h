@@ -1,12 +1,12 @@
 #ifndef __CONNECTION_H__
 #define __CONNECTION_H__
 
-#include "package.h"
+#include "dimension.h"
 
-namespace robot { namespace connection {
+namespace robot
+{
 
-template <typename ...Args>
-using pattern = package_creation::pattern<Args...>;
+// abstract socket wrapper
 
 class socket_wrapper_base
 {
@@ -22,71 +22,100 @@ class socket_wrapper : public socket_wrapper_base
 public:
     socket_wrapper(const SocketType& s): socket(s) {}
 
-    int read (char* data, int size)
-    {
-        return socket.read (data, size);
-    }
-
-    int write(const char* data, int size)
-    {
-        return socket.write(data, size);
-    }
+    int read (      char* data, int size) { return socket.read (data, size); }
+    int write(const char* data, int size) { return socket.write(data, size); }
 };
+
+// additional type traits
+
+template <typename T>
+struct is_constant_size : std::is_fundamental<T> {};
+
+template <typename T, T C>
+struct is_constant_size <std::integral_constant<T, C>> : std::true_type {};
+
+template <typename Key, typename Data>
+struct is_constant_size<pair<Key, Data>>: is_constant_size<Data> {};
+
+template <typename V, typename U>
+struct is_constant_size<phis_value<V, U>>: is_constant_size<V> {};
+
+template <typename Head, typename ...Tail>
+struct is_constant_size<sequence<Head, Tail...>> :
+std::integral_constant
+<
+    bool,
+    is_constant_size<         Head    >::value &&
+    is_constant_size<sequence<Tail...>>::value
+>
+{};
+
+template <>
+struct is_constant_size<sequence<>> : std::true_type {};
+
+// empty dst
+
+struct empty_dst {};
+
+template <typename IStream>
+inline IStream& operator >> (IStream& is, empty_dst& t)
+{
+    return is;
+}
+
+// connection definition
 
 class connection
 {
-    template <size_t C>
-    struct const_size_buffer
-    {
-        uint8_t data[C];
-    };
-
-    struct buffer
-    {
-        uint8_t *data;
-        buffer(size_t size): data(new uint8_t[size]) {}
-        ~buffer() { delete[] data; }
-    };
-
     std::shared_ptr<socket_wrapper_base> socket;
 
 public:
     template <typename S>
     connection(const S& s): socket(new socket_wrapper<S>(s)) {}
 
-    template <typename ...Args>
-    void read(Args&... args)
+    template <typename T>
+    void read(T& t)
     {
         static_assert
         (
-            metaprogramming::is_const_size<Args...>::value,
-            "Args size is not constant. Use sized_read"
+            is_constant_size<sequence<T>>::value,
+            "size of parameter is not compile time constant"
         );
 
-        constexpr size_t read_size = package_creation::size<Args...>::value;
-        const_size_buffer<read_size> buf;
-
-        socket->read((char*)(buf.data), read_size);
-
-        package_creation::parser<Args...>::parse(buf.data, args...);
+        read(calc_size(t), t);
     }
 
-    template <typename ...Args>
-    void sized_read(size_t read_size, Args&... args)
+    template <typename T>
+    void read(size_t size, T& t)
     {
-        buffer buf[read_size];
-        socket->read((char*)(buf.data), read_size);
-        package_creation::parser<Args...>::parse(buf.data, args...);
+        binary_buffer buffer = read_buffer(size);
+        binary_istream is(buffer);
+        deserialize(is, t);
     }
 
-    template <typename ...Args>
-    void write(const Args&... args)
+    binary_buffer read_buffer(size_t size)
     {
-        package_creation::package<pattern<Args...>> p(args...);
-        socket->write((const char*)(p.get_data()), p.data_size());
+        binary_buffer buffer(size);
+        int byte_readed = 0;
+
+        while(byte_readed < (int)size) {
+            char* read_ptr = (char*)(buffer.data + byte_readed);
+            size_t read_size = size - byte_readed;
+            int current_read = socket->read(read_ptr, read_size);
+            byte_readed += current_read;
+        }
+
+        return buffer;
+    }
+
+    template <typename T>
+    void write(const T& t)
+    {
+        binary_buffer buffer(make_buffer(t));
+        socket->write((const char*)(buffer.data), buffer.size);
     }
 };
 
-}}
+}
 
 #endif
