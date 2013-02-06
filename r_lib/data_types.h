@@ -549,13 +549,13 @@ IStream& operator >> (IStream& is, sequence<Head, Tail...>& t)
 class storage_base
 {
 public:
-    virtual void write(std::ostream&) = 0;
-    virtual void read(std::istream&) = 0;
+    virtual void write(std::ostream&) const = 0;
+    virtual void read(std::istream&)        = 0;
 
-    virtual void write(binary_ostream&) = 0;
-    virtual void read(binary_istream&) = 0;
+    virtual void write(binary_ostream&) const = 0;
+    virtual void read(binary_istream&)        = 0;
 
-    virtual void write(size_calc_stream&) = 0;
+    virtual void write(size_calc_stream&) const = 0;
 
     virtual ~storage_base() {}
 };
@@ -567,13 +567,13 @@ class storage : public storage_base
 public:
     storage(const T& t) : val(t) {}
 
-    virtual void write(std::ostream& os) { os << val; }
-    virtual void read (std::istream& is) { is >> val; }
+    virtual void write(std::ostream& os) const { os << val; }
+    virtual void read (std::istream& is)       { is >> val; }
 
-    virtual void write(binary_ostream& os) { os << val; }
-    virtual void read (binary_istream& is) { is >> val; }
+    virtual void write(binary_ostream& os) const { os << val; }
+    virtual void read (binary_istream& is)       { is >> val; }
 
-    virtual void write(size_calc_stream& calc) { calc << val; }
+    virtual void write(size_calc_stream& calc) const { calc << val; }
 };
 
 template <typename T>
@@ -583,13 +583,13 @@ class storage_ref : public storage_base
 public:
     storage_ref(T& t) : val(t) {}
 
-    virtual void write(std::ostream& os) { os << val; }
-    virtual void read (std::istream& is) { is >> val; }
+    virtual void write(std::ostream& os) const { os << val; }
+    virtual void read (std::istream& is)       { is >> val; }
 
-    virtual void write(binary_ostream& os) { os << val; }
-    virtual void read (binary_istream& is) { is >> val; }
+    virtual void write(binary_ostream& os) const { os << val; }
+    virtual void read (binary_istream& is)       { is >> val; }
 
-    virtual void write(size_calc_stream& calc) { calc << val; }
+    virtual void write(size_calc_stream& calc) const { calc << val; }
 };
 
 class any
@@ -599,8 +599,11 @@ public:
     template <typename T> any(storage    <T>* t) : value(t) {}
     template <typename T> any(storage_ref<T>* t) : value(t) {}
 
-    template <typename OStream> void write(OStream& os) { value->write(os); }
-    template <typename IStream> void read (IStream& is) { value->read (is); }
+    template <typename OStream>
+    void write(OStream& os) const { value->write(os); }
+
+    template <typename IStream>
+ void read (IStream& is) { value->read (is); }
 };
 
 template <typename T>
