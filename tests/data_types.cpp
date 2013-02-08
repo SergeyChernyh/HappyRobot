@@ -1,6 +1,7 @@
 #include <type_traits>
 #include <assert.h>
 #include <iostream>
+#include <typeinfo>
 #include "data_types.h"
 #include "dimension.h"
 
@@ -12,6 +13,10 @@ struct sub_sequence_key;
 
 using sequence_0_t = sequence<int, pair<char_key, char>,  pair<sub_sequence_key, sequence<short, pair<long_key, long>>>, int*>;
 
+struct key0;
+struct key1;
+struct key2;
+
 template <typename T0, typename T1>
 using sequence_1_t =
 sequence
@@ -21,7 +26,12 @@ sequence
     sequence
     <
     >,
-    sequence<int, int, std::integral_constant<int, 99>>
+    sequence
+    <
+        pair<key0, int>,
+        pair<key1, char>,
+        pair<key2, std::integral_constant<int, 99>>
+    >
 >;
 
 using sequence_10_t = sequence_1_t<char, short>;
@@ -61,6 +71,8 @@ int main()
 
     get<long_key>(get<2>(sequence_0)) = 71;
 
+    static_assert(std::is_same<decltype (robot::sequence_element<unsigned char>::value), uint8_t >::value, "0");
+
     assert(get<1>(get<sub_sequence_key>(sequence_0)) == 71);
     assert(get<1>(get<sub_sequence_key>(sequence_0)) == get<long_key>(get<2>(sequence_0)));
     assert(&get<1>(get<sub_sequence_key>(sequence_0)) == &get<long_key>(get<2>(sequence_0)));
@@ -79,6 +91,9 @@ int main()
     (
         sequence<int, int, std::integral_constant<int, 99>>(3, 4)
     );
+
+    auto p = get<key1>(get<3>(sequence_10));
+    static_assert(std::is_same<decltype(p), char>::value, "additional check");
 
     static_assert(is_constexpr<std::integral_constant<char, 55>>::value, "is_compile_time_constant error 0");
     static_assert(is_constexpr<is_compile_time_constant_check>::value, "is_compile_time_constant error 1");

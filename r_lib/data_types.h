@@ -273,6 +273,7 @@ struct pair;
 template <typename T>
 struct sequence_element
 {
+    using type = T;
     T value;
 
     template <typename A>
@@ -284,6 +285,7 @@ template <typename T, T C>
 struct sequence_element<std::integral_constant<T, C>> :
                         std::integral_constant<T, C>
 {
+    using type = const T;
     sequence_element(const std::integral_constant<T, C>& v) {}
     sequence_element() {}
 };
@@ -318,8 +320,7 @@ struct sequence_tail<> {};
 // in sequence constructor parameter list
 
 template <typename T>
-struct is_constexpr :
-std::is_const<decltype(sequence_element<T>::value)> {};
+struct is_constexpr : std::is_const<typename sequence_element<T>::type> {};
 
 template <>
 struct is_constexpr <sequence<>> : std::true_type {};
@@ -417,8 +418,7 @@ template <size_t C, typename T>
 using type_at_c = typename type_at_c_<C, T>::type;
 
 template <size_t C, typename T>
-using value_type_at_c =
-decltype(sequence_element<type_at_c<C, T>>::value);
+using value_type_at_c = typename sequence_element<type_at_c<C, T>>::type;
 
 // sequence element type by key
 
@@ -440,7 +440,7 @@ using type_at_key = typename type_at_key_<Key, T>::type;
 
 template <typename Key, typename T>
 using value_type_at_key =
-decltype(sequence_element<type_at_key<Key, T>>::value);
+typename sequence_element<type_at_key<Key, T>>::type;
 
 // sequence tail by index
 
