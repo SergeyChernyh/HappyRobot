@@ -36,7 +36,7 @@ struct parameter_access_error: public std::logic_error
 class signal
 {
     using function_t = std::function<void()>;
-    using effector_t = std::map<size_t, function_t>;
+    using effector_t = std::multimap<size_t, function_t>;
     using iterator = effector_t::iterator;
 
     effector_t effector;
@@ -181,7 +181,7 @@ using function_diff_config_request_key = uint16_constant<0x6>;
 using function_diff_config_request = sequence<uint64_t, function_id_t>;
 //
 using function_config_key = uint16_constant<0x7>;
-using function_config = repeat<uint8_t, any>;
+using function_config = sequence<function_id_t, repeat<uint8_t, any>>;
 
 ///////////////// data access /////////////////////////////
 //
@@ -229,7 +229,7 @@ using function_value_periodical_update_cancel_key = uint16_constant<0x5>;
 using function_value_periodical_update_cancel = function_value_update_cancel;
 //
 using function_value_read_key = uint16_constant<0x6>;
-using function_value_read =
+using function_value_read = // FIXME + function_id
 repeat
 <
     uint8_t,
@@ -257,7 +257,20 @@ repeat
 >;
 //
 using function_value_write_key = uint16_constant<0x8>;
-using function_value_write = repeat<uint8_t, any>;
+using function_value_write =
+sequence
+<
+    function_id_t,
+    repeat
+    <
+        uint8_t,
+        sequence
+        <
+            uint8_t,
+            any
+        >
+    >
+>;
 //
 using labels_format_request_key = uint16_constant<0x9>;
 using labels_format_request = sequence<>;
@@ -457,8 +470,31 @@ public:
     parameter(uint8_t pnum) : config(NA_PARAM, pnum) {}
 
     any get_config() const { return make_storage(config); }
+    any get_value () const
+    {
+        // TODO exc
+        return make_storage(0);
+    }
 
-    uint8_t get_p_code() const { return get<0>(config); }
+    any get_value_writer()
+    {
+        // TODO exc
+        return make_storage(0);
+    }
+
+    sequence<any, uint8_t> get_value_reader()
+    {
+        // TODO exc
+        return sequence<any, uint8_t>(make_storage(0));
+    }
+
+    void add_read_action(const function_t&, size_t p = 0) { /* TODO exc */ }
+    void add_write_action(const function_t&, size_t p = 0) { /* TODO exc */ }
+    
+    void set_read() { /* TODO exc */ }
+    void set_write() { /* TODO exc */ }
+
+    uint8_t get_p_code() const { return get<1>(config); }
 };
 
 using na_parameter = parameter<NA_PARAM, sequence<>>;
@@ -662,6 +698,7 @@ make_parameter_from_config(IStream& is, uint8_t p_code)
     #define __P_MAKE(T)\
     make_parameter_from_config<P_TYPE, T>\
     (\
+        is,\
         p_access_conf,\
         p_access_level_conf,\
         p_value_conf\
@@ -704,13 +741,44 @@ inline std::shared_ptr<parameter_base> make_parameter_from_config(IStream& is)
     case READ_FLAG | WRITE_FLAG:
         return make_parameter_from_config<READ_FLAG | WRITE_FLAG>(is, p_code);
     case NA_PARAM:
-        return std::make_shared<parameter_base>(na_parameter(p_code));
+        return std::make_shared<na_parameter>(na_parameter(p_code));
     default:
         throw parameter_access_error(p_code); // TODO other exc
     }
 
-    return std::make_shared<parameter_base>(na_parameter(p_code));
+    return std::make_shared<na_parameter>(na_parameter(p_code));
 }
+
+///////////////////////////////////////////////////////////
+//
+//                 Common Protocol Function
+//
+///////////////////////////////////////////////////////////
+
+enum class FunctionCodes : uint16_t
+{
+    UNSPECIFIED_DEVICE = 0,
+    MOTION_CONTROL = 1,
+    SENSOR_1D = 2
+};
+
+using function_base = std::map<uint8_t, std::shared_ptr<parameter_base>>;
+
+template <FunctionCodes F_CODE, uint8_t P_COUNT>
+class function : public function_base
+{
+public:
+    function()
+    {
+        for(uint8_t i = 0; i < P_COUNT; i++) {
+            auto empty_p = std::make_shared<na_parameter>(na_parameter(i));
+            insert(std::make_pair(i, empty_p));
+        }
+    }
+};
+
+using move_control_function = function<FunctionCodes::MOTION_CONTROL, 0x1B>;
+using sensor_1D_function    = function<FunctionCodes::SENSOR_1D     , 0x0B>;
 
 ///////////////////////////////////////////////////////////
 //
@@ -721,12 +789,17 @@ inline std::shared_ptr<parameter_base> make_parameter_from_config(IStream& is)
 class robot_state
 {
 protected:
-    using function_t = std::map<uint8_t, std::shared_ptr<parameter_base>>;
-    using same_type_function_group_t = std::map<uint16_t, function_t>;
+    using same_type_function_group_t = std::map<uint16_t, function_base>;
     using function_map_t = std::map<uint16_t, same_type_function_group_t>;
 
     function_map_t function_map;
 public:
+    function_base& get_function_ref(uint16_t f_code, uint16_t f_number)
+    {
+        // TODO check index
+        return function_map[f_code][f_number];
+    }
+
     std::shared_ptr<parameter_base>& parameter_ref
     (
         uint16_t f_code,
@@ -742,11 +815,12 @@ public:
     // function list
     common_protocol::function_list get_f_list() const
     {
-        common_protocol::function_list res;
+        using namespace common_protocol;
+        function_list res;
 
         for(auto& p : function_map)
-            for(auto& f : p.second)
-                res.push_back(common_protocol::function_id_t(p.first, f.first));
+            for(auto& f: p.second)
+                res.push_back(function_id_t(p.first, f.first));
 
         return res;
     }
@@ -761,7 +835,6 @@ public:
             uint16_t f_code, f_num;
             is >> f_code >> f_num;
             function_map[f_code][f_num];
-            std::cout << f_code << " " << f_num << std::endl;
         }
     }
 
@@ -769,13 +842,17 @@ public:
     template <typename IStream>
     common_protocol::function_config get_function_config(IStream& is)
     {
+        using namespace common_protocol;
+
         uint16_t f_code, f_number;
         is >> f_code >> f_number;
 
         common_protocol::function_config res;
 
+        get<0>(res) = function_id_t(f_code, f_number);
+
         for(auto& p : function_map[f_code][f_number])
-            res.push_back(p.second->get_config());
+            get<1>(res).push_back(p.second->get_config());
 
         return res;
     }
@@ -791,7 +868,8 @@ public:
 
         for(size_t i = 0; i < num_of_params; i++) {
             auto new_param = make_parameter_from_config(is);
-            function_map[new_param.get_p_code()] = new_param;
+            uint8_t p_code = new_param->get_p_code();
+            function_map[f_code][f_number][p_code] = new_param;
         }
     }
 
@@ -834,7 +912,9 @@ public:
         for(size_t i = 0; i < num_of_params; i++) {
             uint8_t p_code;
             is >> p_code;
-            is >> function_map[f_code][f_number][p_code]->get_value_reader();
+            auto reader =
+            function_map[f_code][f_number][p_code]->get_value_reader();
+            is >> reader;
         }
     }
 
@@ -842,20 +922,25 @@ public:
     template <typename IStream>
     common_protocol::function_value_write get_write_values(IStream& is)
     {
+        using namespace common_protocol;
+
         uint16_t f_code, f_number;
         is >> f_code >> f_number;
 
         uint8_t num_of_params;
         is >> num_of_params;
 
-        common_protocol::function_value_write res;
+        function_value_write res;
+        using p_wr_t = value_type_at_c<1, function_value_write>::value_type;
+
+        get<0>(res) = function_id_t(f_code, f_number);
 
         for(size_t i = 0; i < num_of_params; i++) {
             // TODO check_index, exc
             uint8_t p_code;
             is >> p_code;
             any v = function_map[f_code][f_number][p_code]->get_value_writer();
-            res.push_back(v);
+            get<1>(res).push_back(p_wr_t(p_code, v));
         }
 
         return res;
@@ -873,8 +958,14 @@ public:
         for(size_t i = 0; i < num_of_params; i++) {
             uint8_t p_code;
             is >> p_code;
-            is >> function_map[f_code][f_number][p_code]->get_value_writer();
+
+            auto& p = function_map[f_code][f_number][p_code];
+            auto writer = p->get_value_writer();
+            is >> writer;
+            p->set_write();
+            p->on_write();
         }
+
     }
     // labels
 };
@@ -908,6 +999,16 @@ protected:
     connection io;
     robot_state r;
 
+    template <typename Group, typename Type>
+    void send_message
+    (
+        const common_protocol::message_body<Group, Type>& m,
+        uint32_t msg_num = 0
+    )
+    {
+        io.write(make_message<Group, Type>(m, msg_num));
+    }
+
     template <typename T>
     client_server_base(const T& t): io(t) {}
 public:
@@ -920,6 +1021,11 @@ public:
     )
     {
         return r.parameter_ref(f_code, f_number, p_code);
+    }
+
+    function_base& get_function_ref(uint16_t f_code, uint16_t f_number)
+    {
+        return r.get_function_ref(f_code, f_number);
     }
 };
 
@@ -949,60 +1055,88 @@ public:
         switch(msg_group) {
             case service_group_key::value:
                 switch(msg_type) {
-                case protocol_version_key::value                   : break;
-                case active_connections_request_key::value         : break;
-                case active_connections_info_key::value            : break;
-                case control_level_up_request_key::value           : break;
-                case control_level_activation_request_key::value   : break;
-                case control_level_deactivation_request_key::value : break;
-                case disconnect_request_key::value                 : break;
-                case disconnect_code_key::value                    : break;
-                case command_return_code_key::value                : break;
+                case protocol_version_key::value:
+                    break;
+                case active_connections_request_key::value:
+                    break;
+                case active_connections_info_key::value:
+                    break;
+                case control_level_up_request_key::value:
+                    break;
+                case control_level_activation_request_key::value:
+                    break;
+                case control_level_deactivation_request_key::value:
+                    break;
+                case disconnect_request_key::value:
+                    break;
+                case disconnect_code_key::value:
+                    break;
+                case command_return_code_key::value:
+                    break;
                 default: break;// TODO send error msg
                 }
                 break;
             case config_group_key::value:
                 switch(msg_type) {
-                case config_version_request_key::value       : break;
-                case config_version_key::value               : break;
-                case function_list_request_key::value        :
-                {
-                    auto f_list = r.get_f_list();
-                    auto f_list_msg =
-                    make_message
+                case config_version_request_key::value:
+                    break;
+                case config_version_key::value:
+                    break;
+                case function_list_request_key::value:
+                    send_message
                     <
                         config_group_key,
                         function_list_key
-                    >(f_list);
-                    io.write(f_list_msg);
+                    >(r.get_f_list());
                     break;
-                }
-                case diff_function_list_request_key::value   : break;
-                case function_list_key::value                : break;
-                case function_config_request_key::value      : break;
-                case function_diff_config_request_key::value : break;
-                case function_config_key::value              : break;
+                case diff_function_list_request_key::value:
+                    break;
+                case function_list_key::value:
+                    break;
+                case function_config_request_key::value:
+                    send_message
+                    <
+                        config_group_key,
+                        function_config_key
+                    >(r.get_function_config(is));
+                    break;
+                case function_diff_config_request_key::value:
+                    break;
+                case function_config_key::value:
+                    break;
                 default: break;// TODO send error msg
                 }
-                break;
-            case 0x2:
+                    break;
+            case data_access_group_key::value:
                 switch(msg_type) {
-                case function_value_read_request_key::value                  : break;
-                case function_value_read_on_update_1_time_request_key::value : break;
-                case function_value_read_on_update_request_key::value        : break;
-                case function_value_read_periodical_request_key::value       : break;
-                case function_value_update_cancel_key::value                 : break;
-                case function_value_periodical_update_cancel_key::value      : break;
-                case function_value_read_key::value                          : break;
-                case function_value_read_denied_key::value                   : break;
-                case function_value_write_key::value                         : break;
-                case labels_format_request_key::value                        : break;
-                case labels_format_key::value                                : break;
+                case function_value_read_request_key::value:
+                    break;
+                case function_value_read_on_update_1_time_request_key::value:
+                    break;
+                case function_value_read_on_update_request_key::value:
+                    break;
+                case function_value_read_periodical_request_key::value:
+                    break;
+                case function_value_update_cancel_key::value:
+                    break;
+                case function_value_periodical_update_cancel_key::value:
+                    break;
+                case function_value_read_key::value:
+                    break;
+                case function_value_read_denied_key::value:
+                    break;
+                case function_value_write_key::value:
+                    r.write_function_values(is);
+                    break;
+                case labels_format_request_key::value:
+                    break;
+                case labels_format_key::value:
+                    break;
                 default: break;// TODO send error msg
                 }
-                break;
+                    break;
             default:; // TODO send error msg
-                break;
+                    break;
         }
     }
 };
@@ -1018,11 +1152,30 @@ public:
         using namespace common_protocol;
 
         // function list
-        auto f_list_req =
-        make_message<config_group_key, function_list_request_key>(sequence<>());
-        io.write(f_list_req);
-
+        send_message<config_group_key, function_list_request_key>(sequence<>());
         client_package_parse();
+
+        for(auto& f: r.get_f_list()) {
+            send_message<config_group_key, function_config_request_key>(f);
+            client_package_parse();
+        }
+    }
+
+    template <typename IStream>
+    void write_parameter_values(IStream& is)
+    {
+        using namespace common_protocol;
+        send_message
+        <
+            data_access_group_key,
+            function_value_write_key
+        >(r.get_write_values(is));
+    }
+
+    template <typename IStream>
+    void set_parameter_values(IStream& is)
+    {
+        r.write_function_values(is);
     }
 
     void client_package_parse()
@@ -1045,47 +1198,78 @@ public:
         switch(msg_group) {
             case service_group_key::value:
                 switch(msg_type) {
-                case protocol_version_key::value                   : break;
-                case active_connections_request_key::value         : break;
-                case active_connections_info_key::value            : break;
-                case control_level_up_request_key::value           : break;
-                case control_level_activation_request_key::value   : break;
-                case control_level_deactivation_request_key::value : break;
-                case disconnect_request_key::value                 : break;
-                case disconnect_code_key::value                    : break;
-                case command_return_code_key::value                : break;
+                case protocol_version_key::value:
+                    break;
+                case active_connections_request_key::value:
+                    break;
+                case active_connections_info_key::value:
+                    break;
+                case control_level_up_request_key::value:
+                    break;
+                case control_level_activation_request_key::value:
+                    break;
+                case control_level_deactivation_request_key::value:
+                    break;
+                case disconnect_request_key::value:
+                    break;
+                case disconnect_code_key::value:
+                    break;
+                case command_return_code_key::value:
+                    break;
                 default: break;// TODO send error msg
                 }
                 break;
             case config_group_key::value:
                 switch(msg_type) {
-                case config_version_request_key::value       : break;
-                case config_version_key::value               : break;
-                case function_list_request_key::value        : break;
-                case diff_function_list_request_key::value   : break;
-                case function_list_key::value                :
+                case config_version_request_key::value:
+                    break;
+                case config_version_key::value:
+                    break;
+                case function_list_request_key::value:
+                    break;
+                case diff_function_list_request_key::value:
+                    break;
+                case function_list_key::value:
                     r.update_function_list(is);
                     break;
-                case function_config_request_key::value      : break;
-                case function_diff_config_request_key::value : break;
-                case function_config_key::value              : break;
+                case function_config_request_key::value:
+                    break;
+                case function_diff_config_request_key::value:
+                    break;
+                case function_config_key::value:
+                    r.update_function_config(is);
+                    break;
                 default: break;// TODO send error msg
                 }
                 break;
-            case 0x2:
+            case data_access_group_key::value:
                 switch(msg_type) {
-                case function_value_read_request_key::value                  : break;
-                case function_value_read_on_update_1_time_request_key::value : break;
-                case function_value_read_on_update_request_key::value        : break;
-                case function_value_read_periodical_request_key::value       : break;
-                case function_value_update_cancel_key::value                 : break;
-                case function_value_periodical_update_cancel_key::value      : break;
-                case function_value_read_key::value                          : break;
-                case function_value_read_denied_key::value                   : break;
-                case function_value_write_key::value                         : break;
-                case labels_format_request_key::value                        : break;
-                case labels_format_key::value                                : break;
-                default: break;// TODO send error msg
+                case function_value_read_request_key::value:
+                    break;
+                case function_value_read_on_update_1_time_request_key::value:
+                    break;
+                case function_value_read_on_update_request_key::value:
+                    break;
+                case function_value_read_periodical_request_key::value:
+                    break;
+                case function_value_update_cancel_key::value:
+                    break;
+                case function_value_periodical_update_cancel_key::value:
+                    break;
+                case function_value_read_key::value:
+                    break;
+                case function_value_read_denied_key::value:
+                    break;
+                case function_value_write_key::value:
+                    r.write_function_values(is);
+                    // TODO make & send write package
+                    break;
+                case labels_format_request_key::value:
+                    break;
+                case labels_format_key::value:
+                    break;
+                default:
+                    break;// TODO send error msg
                 }
                 break;
             default:; // TODO send error msg
