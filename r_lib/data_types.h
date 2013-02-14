@@ -4,6 +4,7 @@
 #include <cstdint>   // uint8_t ...
 #include <cstring>   // size_t
 #include <cmath>     // pow
+#include <iostream>  // std::ostream
 
 #include <memory>    // std::shared_ptr
 #include <vector>    // std::vector
@@ -36,6 +37,40 @@ inline void serialize(OStream& os, const Head& head, const Tail&... tail)
 {
     os << head;
     serialize(os, tail...);
+}
+
+///////////////////////////////////////////////////////////
+//
+//              int8 serialization diff
+//
+///////////////////////////////////////////////////////////
+
+inline std::ostream& operator<<(std::ostream& os, const uint8_t& p)
+{
+    uint16_t res = p;
+    return os << res;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const int8_t& p)
+{
+    int16_t res = p;
+    return os << res;
+}
+
+inline std::istream& operator>>(std::istream& is, uint8_t& p)
+{
+    uint16_t res;
+    is >> res;
+    p = res;
+    return is;
+}
+
+inline std::istream& operator>>(std::istream& is, int8_t& p)
+{
+    int16_t res;
+    is >> res;
+    p = res;
+    return is;
 }
 
 ///////////////////////////////////////////////////////////
