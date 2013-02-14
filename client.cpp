@@ -23,7 +23,7 @@ int main()
             test_client.write_parameter_values(std::cin);
         }
         else if(cmd_name == "read") {
-            ;
+            test_client.read_parameter_values(std::cin);
         }
         else if(cmd_name == "exit") {
             break; 

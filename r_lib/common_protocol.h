@@ -229,17 +229,21 @@ using function_value_periodical_update_cancel_key = uint16_constant<0x5>;
 using function_value_periodical_update_cancel = function_value_update_cancel;
 //
 using function_value_read_key = uint16_constant<0x6>;
-using function_value_read = // FIXME + function_id
-repeat
+using function_value_read =
+sequence
 <
-    uint8_t,
-    sequence
+    function_id_t,
+    repeat
     <
         uint8_t,
         sequence
         <
-            any,
-            uint8_t
+            uint8_t,
+            sequence
+            <
+                any,
+                uint8_t
+            >
         >
     >
 >;
@@ -877,13 +881,17 @@ public:
     template <typename IStream>
     common_protocol::function_value_read get_read_values(IStream& is)
     {
+        using namespace common_protocol;
+
         uint16_t f_code, f_number;
         is >> f_code >> f_number;
 
         uint8_t num_of_params;
         is >> num_of_params;
 
-        common_protocol::function_value_read res;
+        function_value_read res;
+
+        get<0>(res) = function_id_t(f_code, f_number);
 
         for(size_t i = 0; i < num_of_params; i++) {
             // TODO check_index, exc
@@ -894,7 +902,7 @@ public:
                 p_code,
                 function_map[f_code][f_number][p_code]->get_value_reader()
             );
-            res.push_back(v);
+            get<1>(res).push_back(v);
         }
 
         return res;
@@ -1110,6 +1118,11 @@ public:
             case data_access_group_key::value:
                 switch(msg_type) {
                 case function_value_read_request_key::value:
+                    send_message
+                    <
+                        data_access_group_key,
+                        function_value_read_key
+                    >(r.get_read_values(is));
                     break;
                 case function_value_read_on_update_1_time_request_key::value:
                     break;
@@ -1176,6 +1189,21 @@ public:
     void set_parameter_values(IStream& is)
     {
         r.write_function_values(is);
+    }
+
+    template <typename IStream>
+    void read_parameter_values(IStream& is)
+    {
+        using namespace common_protocol;
+
+        function_value_read_request req;
+        is >> req;
+
+        send_message
+        <
+            data_access_group_key,
+            function_value_read_request_key
+        >(req);
     }
 
     void client_package_parse()
@@ -1257,6 +1285,7 @@ public:
                 case function_value_periodical_update_cancel_key::value:
                     break;
                 case function_value_read_key::value:
+                    r.update_function_read_values(is);
                     break;
                 case function_value_read_denied_key::value:
                     break;
