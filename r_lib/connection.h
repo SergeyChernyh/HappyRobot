@@ -88,22 +88,24 @@ public:
     template <typename T>
     void read(size_t size, T& t)
     {
-        binary_buffer buffer = read_buffer(size);
-        binary_istream is(buffer);
-        deserialize(is, t);
+        if(size != 0) {
+            binary_buffer buffer = read_buffer(size);
+            binary_istream is(buffer);
+            deserialize(is, t);
+        }
     }
 
     binary_buffer read_buffer(size_t size)
     {
         binary_buffer buffer(size);
-        int byte_readed = 0;
 
-        while(byte_readed < (int)size) {
-            char* read_ptr = (char*)(buffer.data + byte_readed);
-            size_t read_size = size - byte_readed;
-            int current_read = socket->read(read_ptr, read_size);
-            byte_readed += current_read;
-        }
+        size_t byte_readed;
+
+        if(size != 0)
+            byte_readed = socket->read((char*)(buffer.data), size);
+
+        if(byte_readed != size)
+            ; // TODO exc
 
         return buffer;
     }
