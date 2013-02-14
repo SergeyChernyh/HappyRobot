@@ -6,6 +6,7 @@
 #ifdef __WINDOWS__
     #include <Windows.h>
 #else
+    #include <unistd.h>
     #include <sys/types.h>
     #include <sys/socket.h>
     #include <netinet/in.h>
@@ -27,9 +28,7 @@ public:
 
     int read (char* read_buffer, size_t size)
     {
-        int res = recv(io_socket, read_buffer, size, MSG_WAITALL);
-        std::cout << " recieved " << res << " size = " << size << std::endl;
-        return res;//recv(io_socket, read_buffer, size, MSG_WAITALL);
+        return recv(io_socket, read_buffer, size, MSG_WAITALL);
     }
 };
 
@@ -55,7 +54,7 @@ inline tcp_socket tcp_client(uint32_t ip, uint16_t port)
 
     int res = connect(io_socket, (sockaddr*)&addr, sizeof(addr));
     if(res)
-        ; // TODO exc
+        std::cerr << "tcp connect error\n"; // TODO exc
 
     return tcp_socket(io_socket);
 }
@@ -64,7 +63,7 @@ inline tcp_socket wait_for_tcp_connection(uint32_t ip, uint16_t port)
 {
     int listener_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(listener_socket < 0)
-        ; // TODO exc
+        std::cerr << "tcp listen error\n"; // TODO exc
 
     sockaddr_in addr;
 
@@ -73,13 +72,23 @@ inline tcp_socket wait_for_tcp_connection(uint32_t ip, uint16_t port)
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if(bind(listener_socket, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-        ; // TODO exc
+        std::cerr << "tcp bind error\n"; // TODO exc
 
     listen(listener_socket, 1);
 
     int io_socket = accept(listener_socket, 0, 0);
+
     if(io_socket < 0)
-        ; // TODO exc
+        std::cerr << "tcp accept error\n"; // TODO exc
+
+    if(shutdown(listener_socket, SHUT_RDWR) < 0)
+        std::cerr << "tcp shutdown error";
+
+#ifdef __WINDOWS__
+    closesocket(listener_socket);
+#else
+    close(listener_socket);
+#endif
 
     return tcp_socket(io_socket);
 }
