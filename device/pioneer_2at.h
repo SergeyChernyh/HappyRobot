@@ -162,47 +162,6 @@ sequence
     pair<digout, uint8_t>
 >;
 
-//int main()
-//{
-//    connection iface(tcp_client(INADDR_LOOPBACK, 8101));
-//
-//    auto sync0 = make_p2_at_cmd<0>();
-//    auto sync1 = make_p2_at_cmd<1>();
-//    auto sync2 = make_p2_at_cmd<2>();
-//
-//    p2_at_msg<sip> sip_msg;
-//
-//    iface.write(sync0); iface.read(sync0);
-//    iface.write(sync1); iface.read(sync1);
-//    iface.write(sync2);
-//
-//    iface.read(get<msg_head>(sync2));
-//    empty_dst e;
-//    iface.read(get<msg_size>(get<msg_head>(sync2)), e); // read BS from ModelSim
-//
-//    iface.write(make_p2_at_cmd<1>());
-//    iface.write(make_p2_at_cmd<4>((uint16_t)1));
-//
-//    iface.write(make_p2_at_cmd<11>(decltype(mm()/sec())(1200)));
-//
-//    while(1)
-//    {
-//        iface.read(get<msg_head>(sip_msg));
-//
-//        iface.read
-//        (
-//            get<msg_size>(get<msg_head>(sip_msg)),
-//            get<msg_body>(sip_msg)
-//        );
-//
-//        auto sonars =
-//        get<sonar_measurements>(get<msg_data>((get<msg_body>(sip_msg))));
-//
-//        iface.write(sync0);
-//    }
-//
-//    return 0;
-//}
 }}
 
 #endif //__PIONEER_2AT__
