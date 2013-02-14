@@ -1,20 +1,26 @@
-Сборка тестов:
+Компиляторы
 
-gcc 4.7 (mingw 4.7)
+На данный момент проект может быть собран с помощью:
+- gcc (mingw) версии 4.7 или старше (опробовано под Xubuntu, Windows XP, Windows 7)
+- clang версии 3.1 или старше (опробовано под Xubuntu)
 
-Windows: g++ -Wall -Werror -std=gnu++11 -I. -D__WINDOWS__ tests/test_name.cpp -lws2_32
-Linux:   g++ -Wall -Werror -std=gnu++11 -I.               tests/test_name.cpp
+При сборке с clang два раза возникало недопонимание между компилятором
+и реализацией стандартной библиотеки от gcc. Решение проблем относительно
+легко может быть найдено в интернете. К сожалению, я не сохранил diff 
+файлов стандартной библиотеки.
 
-Некоторые тесты могут также собираться clang 3.1
+Запуск тестов:
+
+./test.sh COMPILER_NAME
 
 ---------------------------------------
 
-Сборка сервера и клиента:
+Сборка примеров сервера и клиента:
 
-g++ -pthread -Wall -Werror -std=gnu++11 -Ir_lib -Ir_project -Ir_project/subsystems r_project/robot.cpp
-mv ./a.out server
+g++ -pthread -Wall -Werror -std=c++11 -Ir_lib server.cpp
+g++ -pthread -Wall -Werror -std=c++11 -Ir_lib client.cpp
 
-g++ -pthread -Wall -Werror -std=gnu++11 -Ir_lib -Ir_project -Ir_project/subsystems r_project/client.cpp
-mv ./a.out client
+Для сборки с clang необходимо добавить:
+-D__GCC_HAVE_SYNC_COMPARE_AND_SWAP_2 -D__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4 -D__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8
 
 Под Windows - аналогично + -D__WINDOWS__ + -lws2_32
