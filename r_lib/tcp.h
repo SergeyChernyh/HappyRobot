@@ -4,12 +4,18 @@
 #include <stdint.h>
 
 #ifdef __WINDOWS__
+    #include <winsock2.h>
     #include <Windows.h>
+    #include <Ws2tcpip.h>
+
+    enum { SHUTDOWN_OPT = SD_BOTH };
 #else
     #include <unistd.h>
     #include <sys/types.h>
     #include <sys/socket.h>
     #include <netinet/in.h>
+
+    enum { SHUTDOWN_OPT = SHUT_RDWR };
 #endif
 
 namespace robot
@@ -81,7 +87,7 @@ inline tcp_socket wait_for_tcp_connection(uint32_t ip, uint16_t port)
     if(io_socket < 0)
         std::cerr << "tcp accept error\n"; // TODO exc
 
-    if(shutdown(listener_socket, SHUT_RDWR) < 0)
+    if(shutdown(listener_socket, SHUTDOWN_OPT) < 0)
         std::cerr << "tcp shutdown error";
 
 #ifdef __WINDOWS__
