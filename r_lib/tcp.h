@@ -40,7 +40,7 @@ public:
 
 inline void tcp_init()
 {
-#ifdef __WINDOWS
+#ifdef __WINDOWS__
     // magic
     WSAData dt;
     WSAStartup(0x0202, &dt);
@@ -67,6 +67,7 @@ inline tcp_socket tcp_client(uint32_t ip, uint16_t port)
 
 inline tcp_socket wait_for_tcp_connection(uint32_t ip, uint16_t port)
 {
+    tcp_init();
     int listener_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(listener_socket < 0)
         std::cerr << "tcp listen error\n"; // TODO exc
