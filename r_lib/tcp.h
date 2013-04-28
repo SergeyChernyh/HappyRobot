@@ -4,12 +4,18 @@
 #include <stdint.h>
 
 #ifdef __WINDOWS__
+    #include <winsock2.h>
     #include <Windows.h>
+    #include <Ws2tcpip.h>
+
+    enum { SHUTDOWN_OPT = SD_BOTH };
 #else
     #include <unistd.h>
     #include <sys/types.h>
     #include <sys/socket.h>
     #include <netinet/in.h>
+
+    enum { SHUTDOWN_OPT = SHUT_RDWR };
 #endif
 
 namespace robot
@@ -34,7 +40,7 @@ public:
 
 inline void tcp_init()
 {
-#ifdef __WINDOWS
+#ifdef __WINDOWS__
     // magic
     WSAData dt;
     WSAStartup(0x0202, &dt);
@@ -61,6 +67,7 @@ inline tcp_socket tcp_client(uint32_t ip, uint16_t port)
 
 inline tcp_socket wait_for_tcp_connection(uint32_t ip, uint16_t port)
 {
+    tcp_init();
     int listener_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(listener_socket < 0)
         std::cerr << "tcp listen error\n"; // TODO exc
@@ -81,7 +88,7 @@ inline tcp_socket wait_for_tcp_connection(uint32_t ip, uint16_t port)
     if(io_socket < 0)
         std::cerr << "tcp accept error\n"; // TODO exc
 
-    if(shutdown(listener_socket, SHUT_RDWR) < 0)
+    if(shutdown(listener_socket, SHUTDOWN_OPT) < 0)
         std::cerr << "tcp shutdown error";
 
 #ifdef __WINDOWS__

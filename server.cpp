@@ -43,9 +43,6 @@ int main()
     {
         int16_t vel =
         linear_move_flag.get().get_value() * preseted_vel.get().get_value();
-
-        std::cout << "set p2at vel == " << vel << std::endl;
-
         p2at_iface.write(p2at::make_p2_at_cmd<11>(vel));
     };
 
