@@ -868,8 +868,6 @@ public:
             uint8_t p_code;
             is >> p_code;
 
-            std::cout << "p_code == " << p_code << std::endl;
-
             any v = function_map[f_code][f_number][p_code]->get_value_writer();
             get<1>(res).push_back(p_wr_t(p_code, v));
         }
