@@ -441,29 +441,116 @@ sequence
 
 class parameter_base
 {
+    any invalid_ret() const { access_error(); return make_storage(0); }
 protected:
-    using function_t = std::function<void()>;
+    using f_t = std::function<void()>;
+
+    void access_error() const { throw parameter_access_error(get_p_code()); }
 public:
-    virtual any get_config() const = 0;
-    virtual any get_value () const = 0;
+    virtual any get_config() const { return invalid_ret(); }
+    virtual any get_value_writer() { return invalid_ret(); }
+    virtual sequence<any, uint8_t> get_value_reader() { return invalid_ret(); }
 
-    virtual any                    get_value_writer() = 0;
-    virtual sequence<any, uint8_t> get_value_reader() = 0;
+    virtual void on_read()  { access_error(); }
+    virtual void on_write() { access_error(); }
 
-    virtual void on_read() {}
-    virtual void on_write() {}
-
-    virtual void add_read_action(const function_t&, size_t p = 0) = 0;
-    virtual void add_write_action(const function_t&, size_t p = 0) = 0;
+    virtual void add_read_action (const f_t&, size_t p = 0) { access_error(); }
+    virtual void add_write_action(const f_t&, size_t p = 0) { access_error(); }
     
-    virtual void set_read()  = 0;    
-    virtual void set_write() = 0;
+    virtual void set_read()  { access_error(); }    
+    virtual void set_write() { access_error(); }
 
     virtual uint8_t get_p_code() const = 0; // HACK or not?
 };
 
 template <uint8_t PARAMETER_TYPE, typename V>
-class parameter;
+class parameter: public parameter_base
+{
+    parameter_config<V> config;
+    std::vector<V> value;
+
+    class rw_action
+    {
+        bool ready = false;
+        signal actions;
+    public:
+        void operator()()
+        {
+            if(ready) {
+                actions();
+                ready = false;
+            }
+        }
+
+        void set_ready() { ready = true; }
+        void add(const f_t& f, size_t p = 0) { actions.add(f, p); }
+    };
+
+    // actions after read and write
+    rw_action read_actions; // actions after value read
+    rw_action write_actions; // actions after value write
+
+    // check access for read/write
+    template <uint8_t FLAG>
+    void check_flag() const
+    {
+        if((PARAMETER_TYPE & FLAG) == 0) // no such flag in parameter type
+            access_error();
+    }
+
+    void set_field_count()
+    {
+        using namespace details;
+
+        size_t field_count =
+        get<field_count_key>(get<value_type_config_key>(config));
+
+        value.resize(field_count);
+    }
+public:
+    parameter(const parameter_config<V>& conf) :
+        config(conf)
+    {
+        set_field_count();
+    }
+
+    std::vector<V>& val_ref() { return value; } // TODO ugly hack
+    uint8_t get_p_code() const { return get<1>(get<0>(config)); } // HACK ?
+
+    any get_config() const {  return make_storage(config); }
+
+    // rw interface
+    sequence<any, uint8_t> get_value_reader()
+    {
+        check_flag<READ_FLAG>();
+        return sequence<any, uint8_t>(make_storage_ref(value), 0);
+    }
+
+    any get_value_writer()
+    {
+        check_flag<WRITE_FLAG>();
+        return make_storage_ref(value);
+    }
+
+    // add actions
+    void add_read_action(const parameter_base::f_t& f, size_t prior = 0)
+    {
+        check_flag<READ_FLAG>();
+        read_actions.add(f, prior);
+    }
+
+    void add_write_action(const parameter_base::f_t& f, size_t prior = 0)
+    {
+        check_flag<WRITE_FLAG>();
+        write_actions.add(f, prior);
+    }
+
+    void on_read()  { check_flag<READ_FLAG >(); read_actions();  }
+    void on_write() { check_flag<WRITE_FLAG>(); write_actions(); }
+
+    void set_read()  { check_flag<READ_FLAG >(); read_actions.set_ready();  }
+    void set_write() { check_flag<WRITE_FLAG>(); write_actions.set_ready(); }
+};
 
 template <>
 class parameter<NA_PARAM, sequence<>> : public parameter_base
@@ -472,179 +559,11 @@ class parameter<NA_PARAM, sequence<>> : public parameter_base
 
 public:
     parameter(uint8_t pnum) : config(NA_PARAM, pnum) {}
-
     any get_config() const { return make_storage(config); }
-    any get_value () const
-    {
-        // TODO exc
-        return make_storage(0);
-    }
-
-    any get_value_writer()
-    {
-        // TODO exc
-        return make_storage(0);
-    }
-
-    sequence<any, uint8_t> get_value_reader()
-    {
-        // TODO exc
-        return sequence<any, uint8_t>(make_storage(0));
-    }
-
-    void add_read_action(const function_t&, size_t p = 0) { /* TODO exc */ }
-    void add_write_action(const function_t&, size_t p = 0) { /* TODO exc */ }
-    
-    void set_read() { /* TODO exc */ }
-    void set_write() { /* TODO exc */ }
-
     uint8_t get_p_code() const { return get<1>(config); }
 };
 
 using na_parameter = parameter<NA_PARAM, sequence<>>;
-
-template <typename V>
-class not_na_parameter_base : public parameter_base
-{
-    parameter_config<V> config;
-
-    void access_error() const
-    {
-        uint8_t p_code = get_p_code();
-        throw parameter_access_error(p_code);
-    }
-protected:
-    std::vector<V> value;
-public:
-    not_na_parameter_base(const parameter_config<V>& conf) :
-        config(conf)
-    {
-        using namespace details;
-        size_t field_count =
-        get<field_count_key>(get<value_type_config_key>(config));
-        value.resize(field_count);
-    }
-
-    virtual void add_read_action(const function_t& f, size_t prior = 0)
-    {
-        access_error();
-    }
-
-    virtual void add_write_action(const function_t& f, size_t prior = 0)
-    {
-        access_error();
-    }
-
-    virtual any get_value() const
-    {
-        access_error();
-        return make_storage(1);
-    }
-
-    virtual any get_value_writer()
-    {
-        access_error();
-        return make_storage(1);
-    }
-
-    virtual sequence<any, uint8_t> get_value_reader()
-    {
-        access_error();
-        return sequence<any, uint8_t>(make_storage(1), 0);
-    }
-
-    any get_config() const { return make_storage(config); }
-    
-    virtual void set_read()  { access_error(); }    
-    virtual void set_write() { access_error(); }
-
-    std::vector<V>& val_ref() { return this->value; }
-
-    uint8_t get_p_code() const { return get<1>(get<0>(config)); }
-};
-
-template <typename V>
-class parameter<READ_FLAG, V> : virtual public not_na_parameter_base<V>
-{
-    bool read_flag = false;
-    signal read_actions;
-public:
-    parameter(const parameter_config<V>& conf) :
-        not_na_parameter_base<V>(conf)
-    {}
-
-    any get_value() const
-    {
-        // TODO labels
-        sequence<decltype(this->value), uint8_t> res(this->value, 0);
-        return make_storage(res);
-    }
-
-    sequence<any, uint8_t> get_value_reader()
-    {
-        // TODO labels
-        return sequence<any, uint8_t>(make_storage_ref(this->value), 0);
-    }
-
-    void add_read_action(const parameter_base::function_t& f, size_t prior = 0)
-    {
-        read_actions.add(f, prior);
-    }
-
-    void on_read()
-    {
-        if(read_flag) {
-            read_actions();
-            read_flag = false;
-        }
-    }
-
-    void set_read() { read_flag = true; }
-};
-
-template <typename V>
-class parameter<WRITE_FLAG, V> : virtual public not_na_parameter_base<V>
-{
-    bool write_flag = false;
-    signal write_actions;
-public:
-    parameter(const parameter_config<V>& conf) :
-        not_na_parameter_base<V>(conf)
-    {}
-
-    any get_value_writer()
-    {
-        return make_storage_ref(this->value);
-    }
-
-    void add_write_action(const parameter_base::function_t& f, size_t prior = 0)
-    {
-        write_actions.add(f, prior);
-    }
-
-    void on_write()
-    {
-        if(write_flag) {
-            write_actions();
-            write_flag = false;
-        }
-    }
-
-    void set_write() { write_flag = true; }
-};
-
-template <typename V>
-class parameter<READ_FLAG | WRITE_FLAG, V> :
-public parameter<READ_FLAG, V>,
-public parameter<WRITE_FLAG, V>
-{
-public:
-    parameter(const parameter_config<V>& conf) :
-        not_na_parameter_base<V>(conf),
-        parameter<READ_FLAG , V>(conf),
-        parameter<WRITE_FLAG, V>(conf)
-    {}
-};
 
 ///////////////////////////////////////////////////////////
 //
@@ -920,6 +839,7 @@ public:
         for(size_t i = 0; i < num_of_params; i++) {
             uint8_t p_code;
             is >> p_code;
+
             auto reader =
             function_map[f_code][f_number][p_code]->get_value_reader();
             is >> reader;
@@ -947,6 +867,9 @@ public:
             // TODO check_index, exc
             uint8_t p_code;
             is >> p_code;
+
+            std::cout << "p_code == " << p_code << std::endl;
+
             any v = function_map[f_code][f_number][p_code]->get_value_writer();
             get<1>(res).push_back(p_wr_t(p_code, v));
         }
