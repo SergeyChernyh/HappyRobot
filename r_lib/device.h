@@ -134,16 +134,14 @@ public:
 
         auto p = std::make_shared<p_t>(make_parameter_config(p_code));
 
-        p_t* p_ = dynamic_cast<p_t*>(p.get());
-
-        auto r = [this, p_]() { this->read_parameter_value (p_->val_ref()); };
-        auto w = [this, p_]() { this->write_parameter_value(p_->val_ref()); };
+        auto r = [this, p]() { this->read_parameter_value (p->val_ref()); };
+        auto w = [this, p]() { this->write_parameter_value(p->val_ref()); };
 
         if(ACCESS_FLAGS & READ_FLAG)
             this->add_action(r);
 
         if(ACCESS_FLAGS & WRITE_FLAG)
-            p_->add_write_action(w);
+            p->add_write_action(w);
 
         return p;
     }
