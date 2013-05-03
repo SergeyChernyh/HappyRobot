@@ -99,7 +99,7 @@ public:
     {
         binary_buffer buffer(size);
 
-        size_t byte_readed;
+        size_t byte_readed = 0;
 
         if(size != 0)
             byte_readed = socket->read((char*)(buffer.data), size);
