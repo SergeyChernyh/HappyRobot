@@ -8,6 +8,7 @@
 
 #include <memory>    // std::shared_ptr
 #include <vector>    // std::vector
+#include <array>     // std::array
 #include <algorithm> // std::copy
 #include <stdexcept> // std::logic_error, std::out_of_range
 
@@ -241,9 +242,27 @@ operator >> (IStream& is, T& t)
 
 ///////////////////////////////////////////////////////////
 //
-//              repeat - specific vector
+//              serialization: containers
 //
 ///////////////////////////////////////////////////////////
+
+// array
+
+template <typename OStream, typename T, size_t C>
+inline OStream& operator << (OStream& os, const std::array<T, C>& t)
+{
+    for(const auto& p : t)
+        os << p;
+    return os;
+}
+
+template <typename IStream, typename T, size_t C>
+inline IStream& operator >> (IStream& is, std::array<T, C>& t)
+{
+    for(auto& p : t)
+        is >> p;
+    return is;
+}
 
 // vector serialization
 
