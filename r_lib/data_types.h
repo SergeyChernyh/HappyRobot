@@ -6,6 +6,7 @@
 #include <cmath>     // pow
 #include <iostream>  // std::ostream
 
+#include <tuple>     // std::tuple
 #include <memory>    // std::shared_ptr
 #include <vector>    // std::vector
 #include <array>     // std::array
@@ -306,6 +307,59 @@ inline IStream& operator >> (IStream& is, repeat<SizeType, T>& t)
     t.resize(size);
     std::vector<T>& vec = t;
     return is >> vec;
+}
+
+///////////////////////////////////////////////////////////
+//
+//              serialization: std::tuple
+//
+///////////////////////////////////////////////////////////
+
+namespace details
+{
+    template <size_t INDEX, typename OStream, typename ...T>
+    inline
+    typename std::enable_if<INDEX == sizeof...(T), void>::type
+    tuple_serialize(OStream& os, const std::tuple<T...>& t) {}
+
+    template <size_t INDEX, typename IStream, typename ...T>
+    inline
+    typename std::enable_if<INDEX == sizeof...(T), void>::type
+    tuple_deserialize(IStream& is, std::tuple<T...>& t) {}
+
+    template <size_t INDEX, typename OStream, typename ...T>
+    inline
+    typename std::enable_if<INDEX < sizeof...(T), void>::type
+    tuple_serialize(OStream& os, const std::tuple<T...>& t)
+    {
+        os << std::get<INDEX>(t);
+        tuple_serialize<INDEX + 1>(os, t);
+    }
+
+    template <size_t INDEX, typename IStream, typename ...T>
+    inline
+    typename std::enable_if<INDEX < sizeof...(T), void>::type
+    tuple_deserialize(IStream& is, std::tuple<T...>& t)
+    {
+        is >> std::get<INDEX>(t);
+        tuple_deserialize<INDEX + 1>(is, t);
+    }
+}
+
+// tuple serialization
+
+template <typename OStream, typename ...T>
+inline OStream& operator << (OStream& os, const std::tuple<T...>& t)
+{
+    details::tuple_serialize<0>(os, t);
+    return os;
+}
+
+template <typename IStream, typename ...T>
+inline IStream& operator >> (IStream& is, std::tuple<T...>& t)
+{
+    details::tuple_deserialize<0>(is, t);
+    return is;
 }
 
 ///////////////////////////////////////////////////////////

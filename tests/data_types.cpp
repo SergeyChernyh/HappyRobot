@@ -126,6 +126,28 @@ int main()
     //
     ///////////////////////////////////////////////////////
 
+
+    {
+        size_calc_stream s;
+
+        std::tuple<int, short, char, unsigned long long> a(0x00010203,0x0405,0x6,0x0708090a0b0c0d0e);
+        std::tuple<char, short, int, int, int> b;
+
+        s << a;
+
+        assert(s.get() == 15);
+
+        binary_buffer buf(s.get());
+    
+        binary_ostream os(buf);
+        binary_istream is(buf);
+
+        os << a;
+        is >> b;
+
+        assert(std::get<0>(b) == 0x3 && std::get<1>(b) == 0x0102);
+    }
+
     {
     size_calc_stream s;
 
