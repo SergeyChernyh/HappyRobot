@@ -53,6 +53,19 @@ std::integral_constant
 template <>
 struct is_constant_size<sequence<>> : std::true_type {};
 
+template <typename Head, typename ...Tail>
+struct is_constant_size<std::tuple<Head, Tail...>> :
+std::integral_constant
+<
+    bool,
+    is_constant_size<         Head    >::value &&
+    is_constant_size<std::tuple<Tail...>>::value
+>
+{};
+
+template <>
+struct is_constant_size<std::tuple<>> : std::true_type {};
+
 // empty dst
 
 struct empty_dst {};
