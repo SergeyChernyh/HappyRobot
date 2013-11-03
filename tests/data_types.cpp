@@ -56,8 +56,8 @@ int main()
     //
     ///////////////////////////////////////////////////////
 
-    static_assert(std::is_same<tuple_element<char_key, tuple_0_t>::type, char>::value, "0");
-    static_assert(std::is_same<tuple_element<sub_tuple_key, tuple_0_t>::type, std::tuple<short, pair<long_key, long>>>::value, "1");
+    static_assert(std::is_same<at_key<char_key, tuple_0_t>, char>::value, "0");
+    static_assert(std::is_same<at_key<sub_tuple_key, tuple_0_t>, std::tuple<short, pair<long_key, long>>>::value, "1");
 
     tuple_0_t tuple_0;
     //const tuple_0_t& tuple_0_o = tuple_0;

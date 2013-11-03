@@ -427,19 +427,18 @@ struct tuple_element<Key, std::tuple<T...>>
     >::type::value_t;
 };
 
+template <typename Key, typename T>
+using at_key = typename tuple_element<Key, T>::type;
+
 template <typename Key, typename ...T>
-inline
-typename tuple_element<Key, std::tuple<T...>>::type&
-get(std::tuple<T...>& t)
+inline at_key<Key, std::tuple<T...>>& get(std::tuple<T...>& t)
 {
     constexpr size_t i = details::key_index<Key, T...>::value;
     return std::get<i>(t).value;
 }
 
 template <typename Key, typename ...T>
-inline
-const typename tuple_element<Key, std::tuple<T...>>::type&
-get(const std::tuple<T...>& t)
+inline const at_key<Key, std::tuple<T...>>& get(const std::tuple<T...>& t)
 {
     constexpr size_t i = details::key_index<Key, T...>::value;
     return std::get<i>(t).value;
