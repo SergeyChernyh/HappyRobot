@@ -13,6 +13,9 @@ namespace robot
 //
 ///////////////////////////////////////////////////////////
 
+template <typename ...T>
+using unit_mask = std::tuple<T...>;
+
 // basic unit
 
 template <int8_t Pow, int8_t Exp>
@@ -37,9 +40,9 @@ struct pow_result_<P, basic_unit<Pow, Exp>>
 };
 
 template <int P, typename ...T>
-struct pow_result_<P, sequence<T...>>
+struct pow_result_<P, unit_mask<T...>>
 {
-    using type = sequence<pow_result<P, T>...>;
+    using type = unit_mask<pow_result<P, T>...>;
 };
 
 // exp result
@@ -57,9 +60,9 @@ struct exp_result_<P, basic_unit<Pow, Exp>>
 };
 
 template <int P, typename ...T>
-struct exp_result_<P, sequence<T...>>
+struct exp_result_<P, unit_mask<T...>>
 {
-    using type = sequence<exp_result<P, T>...>;
+    using type = unit_mask<exp_result<P, T>...>;
 };
 
 // mul result
@@ -82,9 +85,9 @@ struct mul_result_<basic_unit<Pow0, Exp0>, basic_unit<Pow1, Exp1>>
 };
 
 template <typename ...T0, typename ...T1>
-struct mul_result_<sequence<T0...>, sequence<T1...>>
+struct mul_result_<unit_mask<T0...>, unit_mask<T1...>>
 {
-    using type = sequence<mul_result<T0, T1>...>;
+    using type = unit_mask<mul_result<T0, T1>...>;
 };
 
 // basic unit decimical conversion
@@ -115,7 +118,7 @@ template <typename, typename, typename>
 struct unit_convertor;
 
 template <typename ValueType>
-struct unit_convertor<ValueType, sequence<>, sequence<>>
+struct unit_convertor<ValueType, unit_mask<>, unit_mask<>>
 {
     static ValueType convert(const ValueType& v) { return v; }
 };
@@ -129,8 +132,8 @@ template
 struct unit_convertor
 <
     ValueType,
-    sequence<Head0, Tail0...>, 
-    sequence<Head1, Tail1...>
+    unit_mask<Head0, Tail0...>, 
+    unit_mask<Head1, Tail1...>
 >
 {
     static_assert
@@ -159,8 +162,8 @@ struct unit_convertor
         unit_convertor
         <
             ValueType,
-            sequence<Tail0...>,
-            sequence<Tail1...>
+            unit_mask<Tail0...>,
+            unit_mask<Tail1...>
         >::convert(tmp);
     }
 };
@@ -285,7 +288,7 @@ DEF_COMPRASION_OPERATOR(> )
 namespace basic_units {
 
 template <int8_t ...P>
-using unit = sequence<basic_unit<P, 0>...>;
+using unit = unit_mask<basic_unit<P, 0>...>;
 
 using metre           = unit<1, 0, 0, 0, 0, 0, 0>;
 using degree          = unit<0, 1, 0, 0, 0, 0, 0>;

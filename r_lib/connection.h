@@ -91,7 +91,7 @@ public:
     {
         static_assert
         (
-            is_constant_size<sequence<T>>::value,
+            is_constant_size<std::tuple<T>>::value,
             "size of parameter is not compile time constant"
         );
 
