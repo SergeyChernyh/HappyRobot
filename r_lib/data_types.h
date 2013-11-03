@@ -311,42 +311,44 @@ inline IStream& operator >> (IStream& is, repeat<SizeType, T>& t)
 
 ///////////////////////////////////////////////////////////
 //
-//              serialization: std::tuple
+//     std::tuple : serialization & asotiative access
 //
 ///////////////////////////////////////////////////////////
 
 namespace details
 {
-    template <size_t INDEX, typename OStream, typename ...T>
-    inline
-    typename std::enable_if<INDEX == sizeof...(T), void>::type
-    tuple_serialize(OStream& os, const std::tuple<T...>& t) {}
-
-    template <size_t INDEX, typename IStream, typename ...T>
-    inline
-    typename std::enable_if<INDEX == sizeof...(T), void>::type
-    tuple_deserialize(IStream& is, std::tuple<T...>& t) {}
-
-    template <size_t INDEX, typename OStream, typename ...T>
-    inline
-    typename std::enable_if<INDEX < sizeof...(T), void>::type
-    tuple_serialize(OStream& os, const std::tuple<T...>& t)
-    {
-        os << std::get<INDEX>(t);
-        tuple_serialize<INDEX + 1>(os, t);
-    }
-
-    template <size_t INDEX, typename IStream, typename ...T>
-    inline
-    typename std::enable_if<INDEX < sizeof...(T), void>::type
-    tuple_deserialize(IStream& is, std::tuple<T...>& t)
-    {
-        is >> std::get<INDEX>(t);
-        tuple_deserialize<INDEX + 1>(is, t);
-    }
-}
 
 // tuple serialization
+
+template <size_t INDEX, typename OStream, typename ...T>
+inline
+typename std::enable_if<INDEX == sizeof...(T), void>::type
+tuple_serialize(OStream& os, const std::tuple<T...>& t) {}
+
+template <size_t INDEX, typename IStream, typename ...T>
+inline
+typename std::enable_if<INDEX == sizeof...(T), void>::type
+tuple_deserialize(IStream& is, std::tuple<T...>& t) {}
+
+template <size_t INDEX, typename OStream, typename ...T>
+inline
+typename std::enable_if<INDEX < sizeof...(T), void>::type
+tuple_serialize(OStream& os, const std::tuple<T...>& t)
+{
+    os << std::get<INDEX>(t);
+    tuple_serialize<INDEX + 1>(os, t);
+}
+
+template <size_t INDEX, typename IStream, typename ...T>
+inline
+typename std::enable_if<INDEX < sizeof...(T), void>::type
+tuple_deserialize(IStream& is, std::tuple<T...>& t)
+{
+    is >> std::get<INDEX>(t);
+    tuple_deserialize<INDEX + 1>(is, t);
+}
+
+}
 
 template <typename OStream, typename ...T>
 inline OStream& operator << (OStream& os, const std::tuple<T...>& t)
@@ -362,6 +364,87 @@ inline IStream& operator >> (IStream& is, std::tuple<T...>& t)
     return is;
 }
 
+// pair for associative element access 
+
+template <typename Key, typename Val>
+struct pair
+{
+    using value_t = Val;
+    Val value;
+};
+
+template <typename OStream, typename Key, typename Val>
+inline OStream& operator << (OStream& os, const pair<Key, Val>& t)
+{
+    return os << t.value;
+}
+
+template <typename IStream, typename Key, typename Val>
+inline IStream& operator >> (IStream& is, pair<Key, Val>& t)
+{
+    return is >> t.value;
+}
+
+// tuple associative access
+
+namespace details
+{
+
+template <size_t C, typename Key, typename ...T>
+struct tuple_key_compare_index;
+
+template <size_t C, typename Key>
+struct tuple_key_compare_index<C, Key> {};
+
+template <size_t C, typename Key, typename Head, typename ...T>
+struct tuple_key_compare_index<C, Key, Head, T...> :
+    tuple_key_compare_index<C + 1, Key, T...>
+{
+    static_assert(sizeof...(T) != 0, "out of range");
+};
+
+template <size_t C, typename Key, typename V, typename ...T>
+struct tuple_key_compare_index<C, Key, pair<Key, V>, T...> :
+    std::integral_constant<size_t, C>
+{};
+
+template <typename Key, typename ...T>
+struct key_index : tuple_key_compare_index<0, Key, T...> {};
+
+}
+
+template <typename Key, typename T>
+class tuple_element;
+
+template <typename Key, typename ...T>
+struct tuple_element<Key, std::tuple<T...>>
+{
+    using type =
+    typename std::tuple_element
+    <
+        details::key_index<Key, T...>::value,
+        std::tuple<T...>
+    >::type::value_t;
+};
+
+template <typename Key, typename ...T>
+inline
+typename tuple_element<Key, std::tuple<T...>>::type&
+get(std::tuple<T...>& t)
+{
+    constexpr size_t i = details::key_index<Key, T...>::value;
+    return std::get<i>(t).value;
+}
+
+template <typename Key, typename ...T>
+inline
+const typename tuple_element<Key, std::tuple<T...>>::type&
+get(const std::tuple<T...>& t)
+{
+    constexpr size_t i = details::key_index<Key, T...>::value;
+    return std::get<i>(t).value;
+}
+
 ///////////////////////////////////////////////////////////
 //
 //                      sequence
@@ -370,11 +453,6 @@ inline IStream& operator >> (IStream& is, std::tuple<T...>& t)
 
 template <typename ...>
 struct sequence;
-
-// pair for associative element access 
-
-template <typename Key, typename Val>
-struct pair;
 
 // sequence element
 
@@ -711,7 +789,7 @@ public:
     void write(OStream& os) const { value->write(os); }
 
     template <typename IStream>
- void read (IStream& is) { value->read (is); }
+    void read (IStream& is) { value->read (is); }
 };
 
 template <typename T>

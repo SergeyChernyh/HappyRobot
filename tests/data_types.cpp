@@ -10,7 +10,9 @@ using namespace robot;
 struct char_key;
 struct long_key;
 struct sub_sequence_key;
+struct sub_tuple_key;
 
+using tuple_0_t = std::tuple<int, pair<char_key, char>,  pair<sub_tuple_key, std::tuple<short, pair<long_key, long>>>, int*>;
 using sequence_0_t = sequence<int, pair<char_key, char>,  pair<sub_sequence_key, sequence<short, pair<long_key, long>>>, int*>;
 
 struct key0;
@@ -48,6 +50,25 @@ sequence
 
 int main()
 {
+    ///////////////////////////////////////////////////////
+    //
+    //                  tuple test
+    //
+    ///////////////////////////////////////////////////////
+
+    static_assert(std::is_same<tuple_element<char_key, tuple_0_t>::type, char>::value, "0");
+    static_assert(std::is_same<tuple_element<sub_tuple_key, tuple_0_t>::type, std::tuple<short, pair<long_key, long>>>::value, "1");
+
+    tuple_0_t tuple_0;
+    //const tuple_0_t& tuple_0_o = tuple_0;
+
+    get<char_key>(tuple_0) = 66;
+    get<long_key>(get<sub_tuple_key>(tuple_0)) = 71;
+
+    assert(std::get<1>(get<sub_tuple_key>(tuple_0)).value == 71);
+    assert(std::get<1>(get<sub_tuple_key>(tuple_0)).value == get<long_key>(std::get<2>(tuple_0).value));
+    assert(&std::get<1>(get<sub_tuple_key>(tuple_0)).value == &get<long_key>(std::get<2>(tuple_0).value));
+
     ///////////////////////////////////////////////////////
     //
     //                  sequence test
