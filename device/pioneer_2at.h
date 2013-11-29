@@ -26,21 +26,21 @@ struct msg_chck_sum;
 
 template <typename T>
 using p2_at_msg =
-sequence
+std::tuple
 <
-    pair<msg_head, sequence
+    pair<msg_head, std::tuple
     <
         pair<msg_header, std::integral_constant<uint16_t, 0xfbfa>>,
         pair<msg_size, uint8_t>
     >>,
-    pair<msg_body, sequence
+    pair<msg_body, std::tuple
     <
         pair<msg_data, T>,
         pair<msg_chck_sum, uint16_t>
     >>
 >;
 
-inline uint16_t chck_sum_calc(const uint8_t *ptr, uint16_t n)
+inline uint16_t chck_sum_calc(const char *ptr, uint16_t n)
 {
     uint16_t c = 0;
 
@@ -55,49 +55,50 @@ inline uint16_t chck_sum_calc(const uint8_t *ptr, uint16_t n)
     return ((c % 0x100) << 8) | (c / 0x100);
 }
 
-template <uint8_t CmdNum, typename T = sequence<>>
+struct cmd_arg;
+
+template <uint8_t CmdNum, typename T = std::tuple<>>
 using p2_at_cmd =
-sequence
+std::tuple
 <
     std::integral_constant<uint8_t, CmdNum>,
-    type_at_key
+    at_key
     <
         value_type<T>,
-        sequence
+        std::tuple
         <
-            pair<sequence<>, sequence<>>,
+            pair<std::tuple<>, std::tuple<>>,
 
             pair<uint16_t,    std::integral_constant<uint8_t, 0x1B>>,
             pair< int16_t,    std::integral_constant<uint8_t, 0x3B>>,
             pair<std::string, std::integral_constant<uint8_t, 0x2B>>
         >
     >,
-    T
+    pair<cmd_arg, T>
 >;
 
 template <uint8_t CmdNum, typename T>
 inline p2_at_msg<p2_at_cmd<CmdNum, T>> make_p2_at_cmd(const T& p)
 {
-    using cmd = p2_at_cmd<CmdNum, T>;
-    using msg = p2_at_msg<cmd>;
-    using body = type_at_key<msg_body, msg>;
+    p2_at_msg<p2_at_cmd<CmdNum, T>> res;
 
-    return
-    msg
-    (
-        calc_size(body(cmd(p), uint16_t())),
-        body
-        (
-            cmd(p),
-            chck_sum_calc((uint8_t*)make_buffer(cmd(p)).data, calc_size(cmd(p)))
-        )
-    );
+    auto& size      = get<msg_size>(get<msg_head>(res));
+    auto& body      = get<msg_body>(res);
+    auto& cmd       = get<msg_data>(body);
+    auto& arg       = get<cmd_arg>(cmd);
+    auto& check_sum = get<msg_chck_sum>(body);
+
+    size = calc_size(body);
+    arg  = p;
+    check_sum = chck_sum_calc(make_buffer(cmd).data, size - calc_size(check_sum));
+
+    return res;
 }
 
 template <uint8_t CmdNum>
 inline p2_at_msg<p2_at_cmd<CmdNum>> make_p2_at_cmd()
 {
-    return make_p2_at_cmd<CmdNum>(sequence<>());
+    return make_p2_at_cmd<CmdNum>(std::tuple<>());
 }
 
 struct status_key;
@@ -125,7 +126,7 @@ struct digin;
 struct digout;
 
 using sip =
-sequence
+std::tuple
 <
     pair<status_key, uint8_t>,
 
@@ -148,7 +149,7 @@ sequence
         repeat
         <
             uint8_t,
-            sequence
+            std::tuple
             <
                 pair<sonar_number, uint8_t>,
                 pair<sonar_range, mm>

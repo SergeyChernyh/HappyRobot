@@ -243,6 +243,25 @@ operator >> (IStream& is, T& t)
 
 ///////////////////////////////////////////////////////////
 //
+//          serialization: std::integral_constant
+//
+///////////////////////////////////////////////////////////
+
+
+template <typename OStream, typename T, T C>
+inline OStream& operator << (OStream& os, const std::integral_constant<T, C>& t)
+{
+    return os << t.value;
+}
+
+template <typename IStream, typename T, T C>
+inline IStream& operator >> (IStream& is, std::integral_constant<T, C>& t)
+{
+    return is >> t.value;
+}
+
+///////////////////////////////////////////////////////////
+//
 //              serialization: containers
 //
 ///////////////////////////////////////////////////////////
