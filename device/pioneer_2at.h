@@ -43,15 +43,16 @@ std::tuple
 inline uint16_t chck_sum_calc(const char *ptr, uint16_t n)
 {
     uint16_t c = 0;
+    const uint8_t *p =  (const uint8_t*)ptr;
 
     while (n > 1) {
-        c += (*(ptr)<<8) | *(ptr+1);
+        c += (*(p)<<8) | *(p+1);
         n -= 2;
-        ptr += 2;
+        p += 2;
     }
 
     if (n > 0)
-        c ^= (uint16_t)*(ptr++);
+        c ^= (uint16_t)*(p++);
     return ((c % 0x100) << 8) | (c / 0x100);
 }
 
