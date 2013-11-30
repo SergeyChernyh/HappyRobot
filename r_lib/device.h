@@ -148,34 +148,32 @@ public:
 private:
     parameter_config<reg_val_type<T>> make_parameter_config(size_t p_code)
     {
-        return
-        parameter_config<v_t>
-        (
-            parameter_access_config
-            (
-                ACCESS_FLAGS, // TODO check != 0
-                p_code
-            ),
-            parameter_access_level_config
-            (
-                READ_ACCESS_LEVEL,
-                WRITE_P_ACCESS_LEVEL
-            ),
-            parameter_value_type_config
-            (
-                reg_functions<T>::field_count(),
-                log2<sizeof(v_t)>::value,
-                (std::is_signed<v_t>::value ? 1 << 1 : 0) |
-                (std::is_floating_point<v_t>::value ? 1 : 0)
-            ),
-            parameter_value_limits_config<v_t>
-            (
-                MAX,
-                MIN,
-                STEP
-            ),
-            repeat<uint8_t, uint8_t>()
-        );
+        using namespace details;
+        
+        parameter_config<v_t> ret;
+
+        auto& p_access       = robot::get<access_config_key>(ret);
+        auto& p_access_level = robot::get<access_level_config_key>(ret);
+        auto& p_val_type     = robot::get<value_type_config_key>(ret);
+        auto& p_limits       = robot::get<value_limits_config_key>(ret);
+
+        robot::get<type_key>(p_access) = ACCESS_FLAGS;
+        robot::get<code_key>(p_access) = p_code;
+
+        robot::get<read_acess_level >(p_access_level) = READ_ACCESS_LEVEL;
+        robot::get<write_acess_level>(p_access_level) = WRITE_P_ACCESS_LEVEL;
+
+        robot::get<field_count_key >(p_val_type) = reg_functions<T>::field_count();
+        robot::get<field_size_key  >(p_val_type) = log2<sizeof(v_t)>::value;
+        robot::get<field_format_key>(p_val_type) = 
+        (std::is_signed        <v_t>::value ? 1 << 1 : 0) |
+        (std::is_floating_point<v_t>::value ? 1      : 0);
+
+        robot::get<value_max_key >(p_limits) = MAX;
+        robot::get<value_min_key >(p_limits) = MIN;
+        robot::get<value_step_key>(p_limits) = STEP;
+
+        return ret;
     }
 };
 

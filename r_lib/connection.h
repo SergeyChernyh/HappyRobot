@@ -41,19 +41,6 @@ template <typename V, typename U>
 struct is_constant_size<phis_value<V, U>>: is_constant_size<V> {};
 
 template <typename Head, typename ...Tail>
-struct is_constant_size<sequence<Head, Tail...>> :
-std::integral_constant
-<
-    bool,
-    is_constant_size<         Head    >::value &&
-    is_constant_size<sequence<Tail...>>::value
->
-{};
-
-template <>
-struct is_constant_size<sequence<>> : std::true_type {};
-
-template <typename Head, typename ...Tail>
 struct is_constant_size<std::tuple<Head, Tail...>> :
 std::integral_constant
 <

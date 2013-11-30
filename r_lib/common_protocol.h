@@ -74,7 +74,7 @@ template <uint16_t C>
 using uint16_constant = std::integral_constant<uint16_t, C>;
 
 using message_header =
-sequence
+std::tuple
 <
     pair<marker_key     , uint16_constant<0xA5D7>>,
     pair<group_key      , uint16_t>,
@@ -93,7 +93,7 @@ using protocol_version_key = uint16_constant<0x0>;
 using protocol_version = uint16_t;
 //
 using active_connections_request_key = uint16_constant<0x1>;
-using active_connections_request = sequence<>;
+using active_connections_request = std::tuple<>;
 //
 using active_connections_info_key = uint16_constant<0x2>;
 
@@ -107,7 +107,7 @@ struct max_monitor_prior_key;
 struct min_monitor_prior_key;
 
 using active_connections_info =
-sequence
+std::tuple
 <
     pair<num_of_control_slots_key     , uint8_t>,
     pair<num_of_free_control_slots_key, uint8_t>,
@@ -120,16 +120,16 @@ sequence
 >;
 //
 using control_level_up_request_key = uint16_constant<0x3>;
-using control_level_up_request = sequence<>;
+using control_level_up_request = std::tuple<>;
 //
 using control_level_activation_request_key = uint16_constant<0x4>;
-using control_level_activation_request = sequence<>;
+using control_level_activation_request = std::tuple<>;
 //
 using control_level_deactivation_request_key = uint16_constant<0x5>;
-using control_level_deactivation_request = sequence<>;
+using control_level_deactivation_request = std::tuple<>;
 //
 using disconnect_request_key = uint16_constant<0x6>;
-using disconnect_request = sequence<>;
+using disconnect_request = std::tuple<>;
 //
 using disconnect_code_key = uint16_constant<0x7>;
 using disconnect_code = uint16_t;
@@ -140,7 +140,7 @@ struct command_num_key;
 struct return_code_key;
 
 using command_return_code =
-sequence
+std::tuple
 <
     pair<command_num_key, uint32_t>,
     pair<return_code_key, uint16_t>
@@ -153,20 +153,20 @@ struct f_code_key;
 struct f_number_key;
 
 using function_id_t =
-sequence
+std::tuple
 <
-    pair<f_code_key  , uint16_t>,
-    pair<f_number_key, uint16_t>
+    uint16_t, // code
+    uint16_t  // number
 >;
 //
 using config_version_request_key = uint16_constant<0x0>;
-using config_version_request = sequence<>;
+using config_version_request = std::tuple<>;
 //
 using config_version_key = uint16_constant<0x1>;
 using config_version = uint64_t;
 //
 using function_list_request_key = uint16_constant<0x2>;
-using function_list_request = sequence<>;
+using function_list_request = std::tuple<>;
 //
 using diff_function_list_request_key = uint16_constant<0x3>;
 using diff_function_list_request = uint64_t;
@@ -178,22 +178,22 @@ using function_config_request_key = uint16_constant<0x5>;
 using function_config_request = function_id_t;
 //
 using function_diff_config_request_key = uint16_constant<0x6>;
-using function_diff_config_request = sequence<uint64_t, function_id_t>;
+using function_diff_config_request = std::tuple<uint64_t, function_id_t>;
 //
 using function_config_key = uint16_constant<0x7>;
-using function_config = sequence<function_id_t, repeat<uint8_t, any>>;
+using function_config = std::tuple<function_id_t, repeat<uint8_t, any>>;
 
 ///////////////// data access /////////////////////////////
 //
 using function_value_read_request_key = uint16_constant<0x0>;
 using function_value_read_request =
-sequence
+std::tuple
 <
     function_id_t, 
     repeat
     <
         uint8_t,
-        sequence
+        std::tuple
         <
             uint8_t,
             uint8_t
@@ -210,16 +210,16 @@ using function_value_read_on_update_request = function_value_read_request;
 //
 using function_value_read_periodical_request_key = uint16_constant<0x3>;
 using function_value_read_periodical_request =
-sequence
+std::tuple
 <
     function_id_t, 
-    repeat<uint8_t, sequence<uint8_t, uint8_t>>,
+    repeat<uint8_t, std::tuple<uint8_t, uint8_t>>,
     uint32_t
 >;
 //
 using function_value_update_cancel_key = uint16_constant<0x4>;
 using function_value_update_cancel =
-sequence
+std::tuple
 <
     function_id_t,
     repeat<uint8_t, uint8_t>
@@ -230,16 +230,16 @@ using function_value_periodical_update_cancel = function_value_update_cancel;
 //
 using function_value_read_key = uint16_constant<0x6>;
 using function_value_read =
-sequence
+std::tuple
 <
     function_id_t,
     repeat
     <
         uint8_t,
-        sequence
+        std::tuple
         <
             uint8_t,
-            sequence
+            std::tuple
             <
                 any,
                 uint8_t
@@ -253,7 +253,7 @@ using function_value_read_denied =
 repeat
 <
     uint8_t,
-    sequence
+    std::tuple
     <
         uint8_t,
         uint8_t
@@ -262,13 +262,13 @@ repeat
 //
 using function_value_write_key = uint16_constant<0x8>;
 using function_value_write =
-sequence
+std::tuple
 <
     function_id_t,
     repeat
     <
         uint8_t,
-        sequence
+        std::tuple
         <
             uint8_t,
             any
@@ -277,15 +277,15 @@ sequence
 >;
 //
 using labels_format_request_key = uint16_constant<0x9>;
-using labels_format_request = sequence<>;
+using labels_format_request = std::tuple<>;
 //
 using labels_format_key = uint16_constant<0xA>;
-using labels_format = sequence<any>;
+using labels_format = std::tuple<any>;
 
 #define MSG_TYPE(NAME) pair<NAME##_key, NAME>
 
 using service_group =
-sequence
+std::tuple
 <
     MSG_TYPE(protocol_version),
     MSG_TYPE(active_connections_request),
@@ -299,7 +299,7 @@ sequence
 >;
 
 using config_group =
-sequence
+std::tuple
 <
     MSG_TYPE(config_version_request),
     MSG_TYPE(config_version), 
@@ -312,7 +312,7 @@ sequence
 >;
 
 using data_access_group =
-sequence
+std::tuple
 <
     MSG_TYPE(function_value_read_request),
     MSG_TYPE(function_value_read_on_update_1_time_request),
@@ -330,7 +330,7 @@ sequence
 #undef MSG_TYPE
 
 using common_protocol_table =
-sequence
+std::tuple
 <
     pair<service_group_key    , service_group>,
     pair<config_group_key     , config_group >,
@@ -339,10 +339,19 @@ sequence
 
 template <typename Group, typename Type>
 using message_body =
-type_at_key<Type, type_at_key<Group, common_protocol_table>>;
+at_key
+<
+    Type,
+    at_key
+    <
+        Group,
+        common_protocol_table
+    >
+>;
 
 template <typename Group, typename Type>
-using message = sequence
+using message =
+std::tuple
 <
     pair<header_key, message_header>,
     pair<body_key  , message_body<Group, Type>>
@@ -369,14 +378,14 @@ constexpr uint8_t READ_FLAG  = 1;
 constexpr uint8_t WRITE_FLAG = 1 << 1;
 
 using parameter_access_config =
-sequence
+std::tuple
 <
     pair<details::type_key, uint8_t>,
     pair<details::code_key, uint8_t>
 >;
 
 using parameter_access_level_config =
-sequence
+std::tuple
 <
     pair<details::read_acess_level , uint8_t>,
     pair<details::write_acess_level, uint8_t>
@@ -390,7 +399,7 @@ struct field_format_key;
 }
 
 using parameter_value_type_config =
-sequence
+std::tuple
 <
     pair<details::field_count_key , uint8_t>,
     pair<details::field_size_key  , uint8_t>,
@@ -406,7 +415,7 @@ struct value_step_key;
 
 template <typename T>
 using parameter_value_limits_config =
-sequence
+std::tuple
 <
     pair<details::value_max_key , T>,
     pair<details::value_min_key , T>,
@@ -424,7 +433,7 @@ struct dimension_key;
 
 template <typename T>
 using parameter_config =
-sequence
+std::tuple
 <
     pair<details::access_config_key      , parameter_access_config>,
     pair<details::access_level_config_key, parameter_access_level_config>,
@@ -449,7 +458,11 @@ protected:
 public:
     virtual any get_config() const { return invalid_ret(); }
     virtual any get_value_writer() { return invalid_ret(); }
-    virtual sequence<any, uint8_t> get_value_reader() { return invalid_ret(); }
+
+    virtual std::tuple<any, uint8_t> get_value_reader()
+    {
+        return std::tuple<any, uint8_t>(invalid_ret(), 0);
+    }
 
     virtual void on_read()  { access_error(); }
     virtual void on_write() { access_error(); }
@@ -515,15 +528,19 @@ public:
     }
 
     std::vector<V>& val_ref() { return value; } // TODO ugly hack
-    uint8_t get_p_code() const { return get<1>(get<0>(config)); } // HACK ?
+    uint8_t get_p_code() const
+    {
+        using namespace details;
+        return get<code_key>(get<access_config_key>(config));
+    } // HACK ?
 
     any get_config() const {  return make_storage(config); }
 
     // rw interface
-    sequence<any, uint8_t> get_value_reader()
+    std::tuple<any, uint8_t> get_value_reader()
     {
         check_flag<READ_FLAG>();
-        return sequence<any, uint8_t>(make_storage_ref(value), 0);
+        return std::tuple<any, uint8_t>(make_storage_ref(value), 0);
     }
 
     any get_value_writer()
@@ -553,17 +570,22 @@ public:
 };
 
 template <>
-class parameter<NA_PARAM, sequence<>> : public parameter_base
+class parameter<NA_PARAM, std::tuple<>> : public parameter_base
 {
     parameter_access_config config;
 
 public:
-    parameter(uint8_t pnum) : config(NA_PARAM, pnum) {}
+    parameter(const uint8_t& pnum)
+    {
+        get<details::type_key>(config) = NA_PARAM;
+        get<details::code_key>(config) = pnum;
+    }
+
     any get_config() const { return make_storage(config); }
-    uint8_t get_p_code() const { return get<1>(config); }
+    uint8_t get_p_code() const { return get<details::code_key>(config); }
 };
 
-using na_parameter = parameter<NA_PARAM, sequence<>>;
+using na_parameter = parameter<NA_PARAM, std::tuple<>>;
 
 ///////////////////////////////////////////////////////////
 //
@@ -581,21 +603,21 @@ make_parameter_from_config
     const parameter_value_type_config& p_value_conf
 )
 {
+    using namespace details;
+
     parameter_value_limits_config<T> p_value_limits;
     is >> p_value_limits;
 
     repeat<uint8_t, uint8_t> p_dimension;
     is >> p_dimension;
 
-    parameter_config<T>
-    conf
-    (
-        p_access_conf,
-        p_access_level_conf,
-        p_value_conf,
-        p_value_limits,
-        p_dimension
-    );
+    parameter_config<T> conf;
+    
+    get<access_config_key      >(conf) = p_access_conf;
+    get<access_level_config_key>(conf) = p_access_level_conf;
+    get<value_type_config_key  >(conf) = p_value_conf;
+    get<value_limits_config_key>(conf) = p_value_limits;
+    get<dimension_key          >(conf) = p_dimension;
 
     return std::make_shared<parameter<P_TYPE, T>>(conf);
 }
@@ -604,7 +626,10 @@ template <uint8_t P_TYPE, typename IStream>
 inline std::shared_ptr<parameter_base>
 make_parameter_from_config(IStream& is, uint8_t p_code)
 {
-    parameter_access_config p_access_conf(P_TYPE, p_code);
+    parameter_access_config p_access_conf;
+
+    get<details::type_key>(p_access_conf) = P_TYPE;
+    get<details::code_key>(p_access_conf) = p_code;
 
     parameter_access_level_config p_access_level_conf;
     is >> p_access_level_conf;
@@ -816,7 +841,7 @@ public:
             // TODO check_index, exc
             uint8_t p_code, p_flags;
             is >> p_code >> p_flags; // TODO flags
-            sequence<uint8_t, sequence<any, uint8_t>> v
+            std::tuple<uint8_t, std::tuple<any, uint8_t>> v
             (
                 p_code,
                 function_map[f_code][f_number][p_code]->get_value_reader()
@@ -859,7 +884,7 @@ public:
         is >> num_of_params;
 
         function_value_write res;
-        using p_wr_t = value_type_at_c<1, function_value_write>::value_type;
+        using p_wr_t = std::tuple_element<1, function_value_write>::type::value_type;
 
         get<0>(res) = function_id_t(f_code, f_number);
 
@@ -911,18 +936,21 @@ protected:
     )
     {
         using namespace common_protocol;
-        return
-        message<Group, Type>
-        (
-            message_header
-            (
-                Group::value,
-                Type::value,
-                msg_num,
-                calc_size(m)
-            ),
-            m
-        );
+
+        message<Group, Type> ret;
+
+        auto& header = get<header_key>(ret);
+        
+        get<group_key      >(header) = Group::value;
+        get<type_key       >(header) = Type::value;
+        get<message_num_key>(header) = msg_num;
+        get<data_size_key  >(header) = calc_size(m);
+
+        auto& body = get<body_key>(ret);
+
+        body = m;
+
+        return ret;
     };
 
     connection io;
@@ -1086,7 +1114,7 @@ public:
         using namespace common_protocol;
 
         // function list
-        send_message<config_group_key, function_list_request_key>(sequence<>());
+        send_message<config_group_key, function_list_request_key>(std::tuple<>());
         client_package_parse();
 
         for(auto& f: r.get_f_list()) {
