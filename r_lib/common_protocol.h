@@ -8,6 +8,8 @@
 #include <mutex>
 #include <limits>
 
+#include <boost/signals2.hpp>
+
 #include "dimension.h"
 #include "connection.h"
 
@@ -29,28 +31,6 @@ struct parameter_access_error: public std::logic_error
         std::logic_error("error: param rw op acess error"),
         p_code(p)
     {}
-};
-
-// signal
-
-class signal
-{
-    using function_t = std::function<void()>;
-    using effector_t = std::multimap<size_t, function_t>;
-    using iterator = effector_t::iterator;
-
-    effector_t effector;
-public:
-    void operator()()
-    {
-        for(iterator it = effector.begin(); it != effector.end(); ++it)
-            it->second();
-    }
-
-    void add(const function_t& f, size_t prior = 0)
-    {
-        effector.insert(std::make_pair(prior, f));
-    }
 };
 
 ///////////////////////////////////////////////////////////
@@ -485,7 +465,7 @@ class parameter: public parameter_base
     class rw_action
     {
         bool ready = false;
-        signal actions;
+        boost::signals2::signal<void()> actions;
     public:
         void operator()()
         {
@@ -496,7 +476,7 @@ class parameter: public parameter_base
         }
 
         void set_ready() { ready = true; }
-        void add(const f_t& f, size_t p = 0) { actions.add(f, p); }
+        void add(const f_t& f) { actions.connect(f); }
     };
 
     // actions after read and write
@@ -550,16 +530,16 @@ public:
     }
 
     // add actions
-    void add_read_action(const parameter_base::f_t& f, size_t prior = 0)
+    void add_read_action(const parameter_base::f_t& f)
     {
         check_flag<READ_FLAG>();
-        read_actions.add(f, prior);
+        read_actions.add(f);
     }
 
-    void add_write_action(const parameter_base::f_t& f, size_t prior = 0)
+    void add_write_action(const parameter_base::f_t& f)
     {
         check_flag<WRITE_FLAG>();
-        write_actions.add(f, prior);
+        write_actions.add(f);
     }
 
     void on_read()  { check_flag<READ_FLAG >(); read_actions();  }

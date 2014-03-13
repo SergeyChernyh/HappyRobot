@@ -91,7 +91,7 @@ class reg
 
     T data;
 
-    signal on_update;
+    boost::signals2::signal<void()> on_update;
 
     std::mutex m;
     using lock_t = std::lock_guard<std::mutex>;
@@ -124,7 +124,7 @@ public:
         on_update();
     }
 
-    void add_action(const std::function<void()>& f) { on_update.add(f); }
+    void add_action(const std::function<void()>& f) { on_update.connect(f); }
 
     // binding with parameter
 
